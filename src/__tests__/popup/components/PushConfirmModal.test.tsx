@@ -113,6 +113,19 @@ describe('PushConfirmModal', () => {
     expect(onCancel).not.toHaveBeenCalled()
   })
 
+  it('显示推送目标文件', () => {
+    renderWithTheme(
+      <PushConfirmModal
+        bookmarks={mockBookmarks}
+        fileName="bookmarks-chrome.json"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('→ bookmarks-chrome.json')).toBeTruthy()
+  })
+
   it('显示强制覆盖警告', () => {
     renderWithTheme(
       <PushConfirmModal

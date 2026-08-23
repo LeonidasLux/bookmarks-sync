@@ -10,6 +10,7 @@ import { BookmarkList } from './components/BookmarkList'
 import { BookmarkStats } from './components/BookmarkStats'
 import { DiffReviewPanel } from './components/DiffReviewPanel'
 import { PushConfirmModal } from './components/PushConfirmModal'
+import { FilePickModal } from './components/FilePickModal'
 import { FolderPicker } from './components/FolderPicker'
 import { LoadingView } from './components/LoadingView'
 import type { Bookmark } from '../../shared/types'
@@ -41,6 +42,10 @@ function AppShell() {
   const [saveTabUrl, setSaveTabUrl] = useState('')
   const [syncSteps, setSyncSteps] = useState<string[] | null>(null)
   const [pushPreview, setPushPreview] = useState<Bookmark[] | null>(null)
+  const [filePickMode, setFilePickMode] = useState<'push' | 'pull' | null>(null)
+  const [remoteFiles, setRemoteFiles] = useState<string[] | null>(null)
+  const [remoteFilesError, setRemoteFilesError] = useState<string | null>(null)
+  const [pushTargetFile, setPushTargetFile] = useState('')
   const { config, loading, syncStatus, setSyncStatus, isConfigured } = useConfig()
   const {
     currentFolder,
@@ -54,7 +59,7 @@ function AppShell() {
     openBookmark,
   } = useBookmarkNavigation()
   const { stats, refreshStats } = useBookmarkStats()
-  const { pushLoading, pullLoading, getPushPreview, executePush, handlePull, handleSaveCurrent, getCurrentTabInfo } = useSync()
+  const { pushLoading, pullLoading, getPushPreview, executePush, handlePull, handleSaveCurrent, getCurrentTabInfo, listRemoteFiles } = useSync()
   const {
     pullDiffs,
     selectedIds,
@@ -102,12 +107,40 @@ function AppShell() {
     return () => chrome.runtime.onMessage.removeListener(handler)
   }, [triggerSaveBookmark])
 
-  // ---- 同步操作包装 ----
-  const onPush = async () => {
+  // ---- 文件选择弹窗：推送 / 拉取前选择远程书签文件 ----
+  const openFilePick = useCallback((mode: 'push' | 'pull') => {
     setSyncSteps(null)
-    const bookmarks = await getPushPreview()
-    setPushPreview(bookmarks)
-  }
+    setFilePickMode(mode)
+    setRemoteFiles(null)
+    setRemoteFilesError(null)
+  }, [])
+
+  useEffect(() => {
+    if (!filePickMode) return
+    let cancelled = false
+    listRemoteFiles().then(({ files, error }) => {
+      if (cancelled) return
+      setRemoteFiles(files)
+      setRemoteFilesError(error)
+    })
+    return () => { cancelled = true }
+  }, [filePickMode, listRemoteFiles])
+
+  const onFilePickConfirm = useCallback((fileName: string) => {
+    const mode = filePickMode
+    setFilePickMode(null)
+    if (mode === 'push') {
+      setPushTargetFile(fileName)
+      getPushPreview().then(setPushPreview)
+    } else if (mode === 'pull') {
+      handlePull(setSyncStatus, setSyncSteps, fileName).then(res => {
+        if (res.success && res.diffs.length > 0) {
+          setSyncSteps(null)
+          openReview(res.diffs, res.emptyFolders ?? [])
+        }
+      })
+    }
+  }, [filePickMode, getPushPreview, handlePull, openReview, setSyncStatus])
 
   const onCancelPush = useCallback(() => {
     setPushPreview(null)
@@ -116,16 +149,8 @@ function AppShell() {
 
   const onConfirmPush = useCallback(() => {
     setPushPreview(null)
-    executePush(setSyncStatus, setSyncSteps)
-  }, [executePush, setSyncStatus])
-
-  const onPull = async () => {
-    const res = await handlePull(setSyncStatus, setSyncSteps)
-    if (res.success && res.diffs.length > 0) {
-      setSyncSteps(null)
-      openReview(res.diffs, res.emptyFolders ?? [])
-    }
-  }
+    executePush(setSyncStatus, setSyncSteps, pushTargetFile)
+  }, [executePush, pushTargetFile, setSyncStatus])
 
   const onStartSave = useCallback(async () => {
     const info = await getCurrentTabInfo()
@@ -218,8 +243,8 @@ function AppShell() {
         pushLoading={pushLoading}
         pullLoading={pullLoading}
         onSaveCurrent={onStartSave}
-        onPush={onPush}
-        onPull={onPull}
+        onPush={() => openFilePick('push')}
+        onPull={() => openFilePick('pull')}
         onOpenOptions={openOptions}
       />
 
@@ -268,8 +293,20 @@ function AppShell() {
       {pushPreview && (
         <PushConfirmModal
           bookmarks={pushPreview}
+          fileName={pushTargetFile}
           onCancel={onCancelPush}
           onConfirm={onConfirmPush}
+        />
+      )}
+
+      {filePickMode && (
+        <FilePickModal
+          mode={filePickMode}
+          files={remoteFiles}
+          defaultFile={filePickMode === 'push' ? (config?.syncFileName ?? '') : (config?.pullFileName ?? '')}
+          error={remoteFilesError}
+          onConfirm={onFilePickConfirm}
+          onCancel={() => setFilePickMode(null)}
         />
       )}
     </div>

@@ -1,44 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useConfigForm } from './hooks/useConfigForm'
 import { useCommands } from './hooks/useCommands'
-
-// 暗色 / 亮色 调色板
-const palettes = {
-  dark: {
-    bg: '#0d1117',
-    surface: '#161b22',
-    border: '#30363d',
-    borderLight: '#21262d',
-    text: '#e6edf3',
-    textMuted: '#8b949e',
-    textDim: '#6e7681',
-    accent: '#3dd6c8',
-    accentGlow: 'rgba(61, 214, 200, 0.15)',
-    green: '#3fb950',
-    orange: '#d29922',
-  },
-  light: {
-    bg: '#ffffff',
-    surface: '#f6f8fa',
-    border: '#d8dee4',
-    borderLight: '#e8ecf0',
-    text: '#1f2328',
-    textMuted: '#656d76',
-    textDim: '#8b949e',
-    accent: '#0d9488',
-    accentGlow: 'rgba(13, 148, 136, 0.1)',
-    green: '#1a7f37',
-    orange: '#9a6700',
-  },
-}
-
-type Palette = (typeof palettes)[keyof typeof palettes]
+import { useRemoteFiles } from './hooks/useRemoteFiles'
+import { palettes, type Palette } from './palette'
+import { FileDefaultPicker } from './components/FileDefaultPicker'
 
 const font = '"JetBrains Mono", "SF Mono", "Fira Code", "Consolas", monospace'
 
 function App() {
   const { config, saved, save, updateField } = useConfigForm()
   const { commands } = useCommands()
+  const githubConfigured = !!(config?.githubToken && config?.repoOwner && config?.repoName)
+  const syncFiles = useRemoteFiles(githubConfigured)
+  const pullFiles = useRemoteFiles(githubConfigured)
   const [focusField, setFocusField] = useState<string | null>(null)
   const [showToken, setShowToken] = useState(false)
   const [systemDark, setSystemDark] = useState(
@@ -232,6 +206,30 @@ function App() {
           </p>
         )}
       </div>
+
+      <FileDefaultPicker
+        label="SYNC_FILE"
+        description="推送时默认写入的远程书签文件"
+        value={config?.syncFileName ?? ''}
+        onChange={(v) => updateField('syncFileName', v)}
+        files={syncFiles.files}
+        loading={syncFiles.loading}
+        error={syncFiles.error}
+        onRefresh={syncFiles.refresh}
+        colors={colors}
+      />
+
+      <FileDefaultPicker
+        label="PULL_FILE"
+        description="拉取时默认读取的远程书签文件"
+        value={config?.pullFileName ?? ''}
+        onChange={(v) => updateField('pullFileName', v)}
+        files={pullFiles.files}
+        loading={pullFiles.loading}
+        error={pullFiles.error}
+        onRefresh={pullFiles.refresh}
+        colors={colors}
+      />
 
       <div style={{ marginBottom: '1rem' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '13px' }}>

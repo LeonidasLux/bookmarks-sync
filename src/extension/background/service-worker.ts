@@ -1,6 +1,6 @@
 import type { AppConfig, Bookmark, BookmarkDiff } from '../../shared/types'
 import { DEFAULT_CONFIG } from '../../shared/types'
-import { SyncEngine } from '../../shared/sync'
+import { SyncEngine, LEGACY_BOOKMARK_PATH } from '../../shared/sync'
 import { getBrowserBookmarks } from './bookmark-utils'
 import { computeEmptyFolders } from './folder-utils'
 import { applyDiffsToBrowser, reorderBookmarks, showResult } from './diff-applier'
@@ -62,9 +62,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           }
           if (!syncEngine) syncEngine = new SyncEngine(config)
 
+          const fileName = (msg.fileName as string) || config.syncFileName || LEGACY_BOOKMARK_PATH
           const local = await getBrowserBookmarks(steps)
-          await syncEngine.pushOnly(local, steps)
-          steps.push(`完成: ${local.length} 条`)
+          await syncEngine.pushOnly(local, steps, fileName)
+          steps.push(`完成: ${local.length} 条 -> ${fileName}`)
           showResult(steps, true)
           const timestamp = new Date().toISOString()
           chrome.storage.local.set({ lastSync: timestamp, syncLog: { success: true, timestamp, steps } })
@@ -92,7 +93,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           }
           if (!syncEngine) syncEngine = new SyncEngine(config)
 
-          const remote = await syncEngine.pullOnly(steps)
+          const fileName = (msg.fileName as string) || config.pullFileName || LEGACY_BOOKMARK_PATH
+          const remote = await syncEngine.pullOnly(steps, fileName)
           lastRemoteBookmarks = remote
           // 持久化到 storage，避免 SW 回收后 APPLY 时丢失
           chrome.storage.local.set({ [REMOTE_BOOKMARKS_KEY]: remote })
@@ -108,6 +110,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           steps.push(`❌ ${(e as Error).message}`)
           showResult(steps, false)
           sendResponse({ success: false, timestamp: '', diffs: [], error: (e as Error).message, steps })
+        }
+      })()
+      return true
+    }
+
+    case 'LIST_BOOKMARK_FILES': {
+      ;(async () => {
+        const steps: string[] = []
+        try {
+          if (!config.githubToken || !config.repoOwner || !config.repoName) {
+            steps.push('配置不完整')
+            sendResponse({ success: false, files: [], error: '请先完成设置', steps })
+            return
+          }
+          if (!syncEngine) syncEngine = new SyncEngine(config)
+
+          const files = await syncEngine.listBookmarkFiles(steps)
+          sendResponse({ success: true, files, steps })
+        } catch (e) {
+          steps.push(`❌ ${(e as Error).message}`)
+          sendResponse({ success: false, files: [], error: (e as Error).message, steps })
         }
       })()
       return true

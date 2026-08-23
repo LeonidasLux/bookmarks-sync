@@ -2,9 +2,94 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useSync } from '../../../extension/popup/hooks/useSync'
 
+/** mock sendMessage 回调式调用（绕过 chrome API 重载签名），返回 spy 供断言 */
+function mockSendMessage(handler: (msg: unknown, cb?: (res: unknown) => void) => void) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(handler as any)
+}
+
 describe('useSync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  describe('listRemoteFiles', () => {
+    it('应返回远程书签文件列表', async () => {
+      const sendMessage = mockSendMessage((_msg: unknown, cb?: (res: unknown) => void) => {
+        if (cb) cb({ success: true, files: ['bookmarks-chrome.json', 'bookmarks.json'] })
+        return Promise.resolve()
+      })
+
+      const { result } = renderHook(() => useSync())
+
+      const res = await act(async () => {
+        return await result.current.listRemoteFiles()
+      })
+
+      expect(res).toEqual({ files: ['bookmarks-chrome.json', 'bookmarks.json'], error: null })
+      expect(sendMessage).toHaveBeenCalledWith(
+        { type: 'LIST_BOOKMARK_FILES' },
+        expect.any(Function),
+      )
+    })
+
+    it('失败时应返回空列表和错误信息', async () => {
+      mockSendMessage((_msg: unknown, cb?: (res: unknown) => void) => {
+        if (cb) cb({ success: false, error: 'GitHub API error' })
+        return Promise.resolve()
+      })
+
+      const { result } = renderHook(() => useSync())
+
+      const res = await act(async () => {
+        return await result.current.listRemoteFiles()
+      })
+
+      expect(res).toEqual({ files: [], error: 'GitHub API error' })
+    })
+  })
+
+  describe('executePush', () => {
+    it('应携带指定的 fileName 发送 PUSH_TO_GITHUB', async () => {
+      const sendMessage = mockSendMessage((_msg: unknown, cb?: (res: unknown) => void) => {
+        if (cb) cb({ success: true, timestamp: '2024-01-01T00:00:00Z', steps: [] })
+        return Promise.resolve()
+      })
+
+      const { result } = renderHook(() => useSync())
+      const setSyncStatus = vi.fn()
+
+      await act(async () => {
+        result.current.executePush(setSyncStatus, undefined, 'bookmarks-chrome.json')
+      })
+
+      expect(sendMessage).toHaveBeenCalledWith(
+        { type: 'PUSH_TO_GITHUB', fileName: 'bookmarks-chrome.json' },
+        expect.any(Function),
+      )
+    })
+  })
+
+  describe('handlePull', () => {
+    it('应携带指定的 fileName 发送 PULL_FROM_GITHUB', async () => {
+      const sendMessage = mockSendMessage((_msg: unknown, cb?: (res: unknown) => void) => {
+        if (cb) cb({ success: true, timestamp: '2024-01-01T00:00:00Z', diffs: [], steps: [] })
+        return Promise.resolve()
+      })
+
+      const { result } = renderHook(() => useSync())
+      const setSyncStatus = vi.fn()
+
+      const res = await act(async () => {
+        return await result.current.handlePull(setSyncStatus, undefined, 'bookmarks-edge.json')
+      })
+
+      expect(sendMessage).toHaveBeenCalledWith(
+        { type: 'PULL_FROM_GITHUB', fileName: 'bookmarks-edge.json' },
+        expect.any(Function),
+      )
+      expect(res.success).toBe(true)
+    })
   })
 
   describe('getCurrentTabInfo', () => {

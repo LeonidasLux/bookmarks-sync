@@ -1,6 +1,32 @@
 import type { Bookmark, AppConfig, BookmarkDiff } from './types'
 
-const BOOKMARK_PATH = 'bookmarks.json'
+/** 兼容旧版单文件格式 bookmarks.json */
+export const LEGACY_BOOKMARK_PATH = 'bookmarks.json'
+
+/** 新版文件名格式 bookmarks-[name].json */
+const BOOKMARK_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,49}$/
+const BOOKMARK_FILE_PATTERN = /^bookmarks(?:-[A-Za-z0-9_-]+)?\.json$/
+
+/** 校验书签文件名中的 name（仅英文/数字/中划线/下划线，字母开头） */
+export function isValidBookmarkName(name: string): boolean {
+  return BOOKMARK_NAME_PATTERN.test(name)
+}
+
+/** 根据 name 生成远程文件名 bookmarks-[name].json */
+export function buildBookmarkFileName(name: string): string {
+  return `bookmarks-${name}.json`
+}
+
+/** 判断文件名是否为书签文件（兼容旧版 bookmarks.json） */
+export function isBookmarkFileName(fileName: string): boolean {
+  return BOOKMARK_FILE_PATTERN.test(fileName)
+}
+
+/** 从文件名提取 name（bookmarks-chrome.json -> chrome），非新格式返回 null */
+export function extractBookmarkName(fileName: string): string | null {
+  const m = /^bookmarks-([A-Za-z0-9_-]+)\.json$/.exec(fileName)
+  return m ? m[1] : null
+}
 
 /** 规范化文件夹路径：去掉多余斜杠，保证以单斜杠开头 */
 export function normalizeFolderPath(path: string): string {
@@ -78,9 +104,9 @@ export class SyncEngine {
   }
 
   /** 获取远程文件的 sha（PUT 时需要） */
-  private async getRemoteSha(steps: string[]): Promise<string | undefined> {
-    steps.push(`GET .../contents/${BOOKMARK_PATH} (获取 sha)`)
-    const res = await fetch(`${this.repoUrl}/contents/${BOOKMARK_PATH}`, {
+  private async getRemoteSha(fileName: string, steps: string[]): Promise<string | undefined> {
+    steps.push(`GET .../contents/${fileName} (获取 sha)`)
+    const res = await fetch(`${this.repoUrl}/contents/${fileName}`, {
       headers: this.headers,
     })
     if (res.status === 404) {
@@ -92,12 +118,38 @@ export class SyncEngine {
     return data.sha as string
   }
 
+  /** 列出仓库根目录下所有书签文件（bookmarks*.json，兼容旧版 bookmarks.json） */
+  async listBookmarkFiles(steps: string[]): Promise<string[]> {
+    steps.push('GET .../contents/ (列出书签文件)')
+    const res = await fetch(`${this.repoUrl}/contents`, {
+      headers: this.headers,
+    })
+    if (res.status === 404) {
+      // 空仓库（无提交）时 contents API 也返回 404，需确认仓库本身存在
+      const repoRes = await fetch(this.repoUrl, { headers: this.headers })
+      if (repoRes.status === 404) {
+        throw new Error('仓库不存在或 Token 无权访问')
+      }
+      if (!repoRes.ok) throw new Error(`GitHub API error: ${repoRes.status} ${repoRes.statusText}`)
+      steps.push('仓库为空，暂无书签文件')
+      return []
+    }
+    if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${res.statusText}`)
+    const data = await res.json() as Array<{ name?: string; type?: string }>
+    const files = data
+      .filter(entry => entry.type === 'file' && entry.name && isBookmarkFileName(entry.name))
+      .map(entry => entry.name as string)
+      .sort()
+    steps.push(`远程书签文件: ${files.length > 0 ? files.join(', ') : '(无)'}`)
+    return files
+  }
+
   /**
-   * 推送：本地 → GitHub，强制覆盖
-   * 先获取远程 sha，再用本地内容完整替换
+   * 推送：本地 → GitHub，强制覆盖指定文件
+   * 先获取远程 sha，再用本地内容完整替换（文件不存在时自动新建）
    */
-  async pushOnly(localBookmarks: Bookmark[], steps: string[]): Promise<void> {
-    const sha = await this.getRemoteSha(steps)
+  async pushOnly(localBookmarks: Bookmark[], steps: string[], fileName: string): Promise<void> {
+    const sha = await this.getRemoteSha(fileName, steps)
     const jsonStr = JSON.stringify(localBookmarks, null, 2)
     console.log('[sync] 推送到 GitHub 的原始 JSON:', jsonStr)
     const content = encodeGitHubContent(jsonStr)
@@ -108,8 +160,8 @@ export class SyncEngine {
     }
     if (sha) body.sha = sha
 
-    steps.push(`PUT ${localBookmarks.length} 条书签到 GitHub`)
-    const res = await fetch(`${this.repoUrl}/contents/${BOOKMARK_PATH}`, {
+    steps.push(`PUT ${localBookmarks.length} 条书签到 ${fileName}`)
+    const res = await fetch(`${this.repoUrl}/contents/${fileName}`, {
       method: 'PUT',
       headers: { ...this.headers, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -124,9 +176,9 @@ export class SyncEngine {
   /**
    * 拉取：GitHub → 本地，返回远程书签数组
    */
-  async pullOnly(steps: string[]): Promise<Bookmark[]> {
-    steps.push(`GET .../contents/${BOOKMARK_PATH}`)
-    const res = await fetch(`${this.repoUrl}/contents/${BOOKMARK_PATH}`, {
+  async pullOnly(steps: string[], fileName: string): Promise<Bookmark[]> {
+    steps.push(`GET .../contents/${fileName}`)
+    const res = await fetch(`${this.repoUrl}/contents/${fileName}`, {
       headers: this.headers,
     })
 

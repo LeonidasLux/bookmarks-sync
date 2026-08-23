@@ -20,6 +20,10 @@ export interface AppConfig {
   cleanEmptyFolders: boolean
   /** 主题：'dark' | 'light' | 'system'（跟随系统） */
   theme: 'dark' | 'light' | 'system'
+  /** 同步默认文件（bookmarks-[name].json 或旧版 bookmarks.json），空表示未配置 */
+  syncFileName: string
+  /** 拉取默认文件，空表示未配置 */
+  pullFileName: string
 }
 
 export interface SyncResult {
@@ -62,4 +66,6 @@ export const DEFAULT_CONFIG: AppConfig = {
   repoName: 'my-bookmarks',
   cleanEmptyFolders: true,
   theme: 'system',
+  syncFileName: '',
+  pullFileName: '',
 }

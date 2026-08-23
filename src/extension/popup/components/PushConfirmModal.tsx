@@ -9,11 +9,13 @@ interface FolderSummary {
 
 interface PushConfirmModalProps {
   bookmarks: Bookmark[]
+  /** 推送目标远程文件（bookmarks-[name].json） */
+  fileName?: string
   onConfirm: () => void
   onCancel: () => void
 }
 
-export function PushConfirmModal({ bookmarks, onConfirm, onCancel }: PushConfirmModalProps) {
+export function PushConfirmModal({ bookmarks, fileName, onConfirm, onCancel }: PushConfirmModalProps) {
   const { styles, colors } = useTheme()
 
   const folderSummary = useMemo(() => {
@@ -36,6 +38,11 @@ export function PushConfirmModal({ bookmarks, onConfirm, onCancel }: PushConfirm
         }}>
           <span style={{ color: colors.orange, marginRight: 6 }}>⚠</span>
           <span>$</span> push
+          {fileName && (
+            <span style={{ color: colors.textDim, fontSize: '11px', marginLeft: 8 }}>
+              → {fileName}
+            </span>
+          )}
         </div>
 
         {/* Body */}

@@ -66,14 +66,28 @@ export function useSync() {
     return bookmarks
   }, [])
 
-  /** 执行推送（确认后调用） */
+  /** 获取远程仓库的书签文件列表 */
+  const listRemoteFiles = useCallback((): Promise<{ files: string[]; error: string | null }> => {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: 'LIST_BOOKMARK_FILES' }, (res: { success?: boolean; files?: string[]; error?: string }) => {
+        if (res?.success) {
+          resolve({ files: res.files ?? [], error: null })
+        } else {
+          resolve({ files: [], error: res?.error || '获取远程文件列表失败' })
+        }
+      })
+    })
+  }, [])
+
+  /** 执行推送（确认后调用），fileName 为远程书签文件（不存在时自动新建） */
   const executePush = useCallback((
     setSyncStatus: (s: string | null) => void,
     setSyncSteps?: (steps: string[]) => void,
+    fileName?: string,
   ) => {
     setPushLoading(true)
     setSyncStatus('🔄 推送到 GitHub...')
-    chrome.runtime.sendMessage({ type: 'PUSH_TO_GITHUB' }, (res: SyncResult) => {
+    chrome.runtime.sendMessage({ type: 'PUSH_TO_GITHUB', fileName }, (res: SyncResult) => {
       setPushLoading(false)
       setSyncSteps?.(res.steps ?? [])
       if (res.success) {
@@ -99,15 +113,16 @@ export function useSync() {
     })()
   }, [getPushPreview, executePush])
 
-  /** 返回拉取结果，由调用方决定如何处理差异 */
+  /** 返回拉取结果，由调用方决定如何处理差异，fileName 为远程书签文件 */
   const handlePull = useCallback((
     setSyncStatus: (s: string | null) => void,
     setSyncSteps?: (steps: string[]) => void,
+    fileName?: string,
   ): Promise<PullDiffResult> => {
     return new Promise((resolve) => {
       setPullLoading(true)
       setSyncStatus('🔄 从 GitHub 拉取...')
-      chrome.runtime.sendMessage({ type: 'PULL_FROM_GITHUB' }, (res: PullDiffResult) => {
+      chrome.runtime.sendMessage({ type: 'PULL_FROM_GITHUB', fileName }, (res: PullDiffResult) => {
         setPullLoading(false)
         setSyncSteps?.(res.steps ?? [])
         if (res.success) {
@@ -158,5 +173,5 @@ export function useSync() {
     }
   }, [])
 
-  return { pushLoading, pullLoading, getPushPreview, executePush, handlePush, handlePull, handleSaveCurrent, getCurrentTabInfo }
+  return { pushLoading, pullLoading, getPushPreview, executePush, handlePush, handlePull, handleSaveCurrent, getCurrentTabInfo, listRemoteFiles }
 }
