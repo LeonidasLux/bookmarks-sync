@@ -16,8 +16,12 @@ _Avoid_: 插件、应用
 扩展与 GitHub 仓库之间双向同步书签数据的过程。
 _Avoid_: 备份、上传
 
+**Bookmark File**:
+远程仓库中书签数据的载体，统一命名为 `bookmarks-[name].json`（`name` 仅限英文，字母开头，可含数字/中划线/下划线，最长 50 字符）。不同浏览器/设备可使用独立文件，互不干扰；旧版单文件格式 `bookmarks.json` 仍受支持。
+_Avoid_: 收藏夹文件
+
 **GitHub Backend**:
-以 Git 仓库为存储后端的同步机制，扩展通过 GitHub API 读写 `bookmarks.json`。
+以 Git 仓库为存储后端的同步机制，扩展通过 GitHub API 读写 `bookmarks-[name].json` 文件。同一仓库可存放多个书签文件。
 _Avoid_: 服务器、云存储
 
 **PAT (Personal Access Token)**:
@@ -25,35 +29,30 @@ _Avoid_: 服务器、云存储
 _Avoid_: 密码、API 密钥
 
 **Sync Strategy**:
-同步引擎在推送前从 GitHub 拉取最新数据，在本地合并后推回。遇到冲突时以最新 `updatedAt` 为准。三种触发方式：浏览器启动时自动同步、后台定时同步（可配置间隔，默认 6 小时）、手动触发同步。
+推送为**强制覆盖**指定书签文件（远程已有变更将被丢弃，文件不存在时自动新建）；拉取为从指定文件读取后与本地差异对比，**选择性应用**。触发方式为手动：在扩展弹窗中选择目标文件后触发推送/拉取。
 _Avoid_: 单向同步
 
-**Auto Sync (on start)**:
-扩展在 `service worker` 初始化时自动执行一次完整同步。
-_Avoid_: 启动加载
-
-**Periodic Sync**:
-由 `chrome.alarms` API 触发定时同步，默认间隔 6 小时，用户可在设置页面调整。
-_Avoid_: 轮询
+**Default Sync File**:
+设置页中配置的推送默认文件（`syncFileName`），推送时自动预选，不在远程列表时以「未推送」标记显示。
+_Avoid_: 默认路径
 
 **Manual Sync**:
-用户在扩展弹窗中点击"同步"按钮手动触发同步。
+用户在扩展弹窗中点击推送/拉取按钮，选择远程书签文件后手动触发的同步。
 _Avoid_: 刷新
 
 ## Project Structure
 
 ```
 bookmarks-manager/
-├── bookmarks.json
 ├── src/
 │   ├── extension/
-│   │   ├── popup/
-│   │   ├── options/
-│   │   ├── background/
+│   │   ├── popup/          # 弹窗 UI：书签浏览、文件选择、推送/拉取
+│   │   ├── options/        # 设置页：GitHub 配置、默认文件设置
+│   │   ├── background/     # Service Worker：消息路由 + GitHub API
 │   │   └── manifest.json
 │   └── shared/
-│       ├── types.ts
-│       └── sync.ts
+│       ├── types.ts        # Bookmark / AppConfig 类型定义
+│       └── sync.ts         # SyncEngine：多书签文件同步核心
 ├── vite.config.ts
 ├── package.json
 └── tsconfig.json

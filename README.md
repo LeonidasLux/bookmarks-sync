@@ -25,9 +25,9 @@
 
 ## 📖 概述
 
-**Bookmarks Manager** 是一款 Chrome / Edge 浏览器扩展，将你的浏览器书签与 GitHub 仓库双向同步。书签数据以 `bookmarks.json` 文件存储在 Git 仓库中，你可以：
+**Bookmarks Manager** 是一款 Chrome / Edge 浏览器扩展，将你的浏览器书签与 GitHub 仓库双向同步。书签数据以 `bookmarks-[name].json` 文件存储在 Git 仓库中（兼容旧版 `bookmarks.json`），**不同浏览器 / 设备可分别使用独立文件**，你可以：
 
-- 在**多台电脑**之间保持书签一致
+- 在**多台电脑 / 多个浏览器**之间保持书签一致
 - 通过 GitHub 的版本历史追溯书签变更
 - 配合 CI/CD 或其他工具对书签数据进行二次处理
 
@@ -40,12 +40,12 @@
 | 功能 | 说明 |
 |------|------|
 | 📂 **书签浏览** | 树形文件夹导航 + 面包屑路径，快速浏览所有书签 |
-| 📥 **拉取同步** | 从 GitHub 拉取远程书签，与本地差异对比后**选择性应用** |
-| 📤 **推送同步** | 将本地书签强制推送到 GitHub，覆盖远程数据 |
+| 🗂 **多书签文件** | 远程支持多个 `bookmarks-[name].json`，不同浏览器各存各的书签 |
+| 📥 **拉取同步** | 选择指定书签文件拉取，与本地差异对比后**选择性应用** |
+| 📤 **推送同步** | 选择或**新建**书签文件，将本地书签强制推送到 GitHub |
 | 🔍 **差异审核** | 拉取后按「新增/删除/修改」分组展示变更，可逐条勾选应用 |
 | 🗑 **空文件夹清理** | 同步后自动删除变空的文件夹（可关闭） |
-| ⏰ **自动同步** | 浏览器启动时自动同步 + 后台定时同步（默认 6 小时间隔） |
-| ⚙️ **可配置** | GitHub Token、仓库信息、同步间隔等完全可自定义 |
+| ⚙️ **默认文件配置** | 推送 / 拉取默认文件可在设置中预设（远程下拉 + 新建） |
 | 📌 **快捷保存** | 弹窗中一键将当前页面保存到书签 |
 
 ---
@@ -118,9 +118,11 @@
 | **GitHub Token** | 个人访问令牌 | `ghp_xxxxxxxxxx` |
 | **仓库 Owner** | 仓库所属用户/组织 | `LeonidasLux` |
 | **仓库名称** | 存储书签的仓库名 | `bookmarks-manager` |
-| **自动同步间隔** | 后台定时同步间隔（小时） | `6` |
-| **加载时自动同步** | 扩展初始化时自动执行同步 | 开/关 |
+| **同步默认文件** | 推送时默认写入的远程书签文件（可下拉选择远程文件或新建） | `bookmarks-chrome.json` |
+| **拉取默认文件** | 拉取时默认读取的远程书签文件 | `bookmarks-chrome.json` |
 | **自动清理空文件夹** | 应用差异后删除变空的文件夹 | 开/关 |
+
+> **文件命名规则**：远程书签文件统一为 `bookmarks-[name].json`，`name` 仅限英文（字母开头，可含数字 / 中划线 / 下划线，最长 50 字符）。旧版 `bookmarks.json` 仍受支持，可在文件列表中正常选择。
 
 ---
 
@@ -138,17 +140,19 @@
 ### 同步工作流
 
 **推送（本地 → GitHub）：**
-1. 在弹窗中点击 `↑` 按钮
-2. 扩展读取当前浏览器书签，整体推送到 GitHub
-3. 覆盖 `bookmarks.json` 文件，并生成一次 Git 提交
+1. 在弹窗中点击 `↑` 按钮，弹出「选择同步文件」
+2. 从远程文件列表中选择目标文件，或选择「新建文件」输入英文名（自动生成 `bookmarks-[name].json`）；默认文件会自动预选
+3. 预览推送内容并确认
+4. 强制覆盖所选文件，并生成一次 Git 提交（文件不存在时自动新建）
 
 **拉取（GitHub → 本地）：**
-1. 在弹窗中点击 `↓` 按钮
-2. 扩展对比远程与本地书签，生成差异列表
-3. 在差异审核界面逐项勾选要应用的变更
-4. 点击「应用选中」写入浏览器原生书签
+1. 在弹窗中点击 `↓` 按钮，弹出「选择拉取文件」
+2. 从远程文件列表中选择要拉取的书签文件（默认文件自动预选）
+3. 扩展对比该文件与本地书签，生成差异列表
+4. 在差异审核界面逐项勾选要应用的变更
+5. 点击「应用选中」写入浏览器原生书签
 
-> 💡 **同步策略**：推送前从 GitHub 拉取最新数据，在本地合并后写入。冲突处理以最新的 `updatedAt` 为准。
+> 💡 **同步策略**：推送为**强制覆盖**（远程已有变更将被丢弃）；拉取为差异对比后**选择性应用**。默认文件可在设置中预先配置，未配置时每次操作弹窗中选择。
 
 ---
 
@@ -159,43 +163,59 @@ bookmarks-manager/
 ├── src/
 │   ├── extension/
 │   │   ├── popup/                     # 弹窗 UI（React）
-│   │   │   ├── App.tsx                # 根组件：编排 hooks 和子组件（~110 行）
+│   │   │   ├── App.tsx                # 根组件：编排 hooks 和子组件（~316 行）
 │   │   │   ├── constants.ts           # 常量：文件夹 ID、差异标签/颜色
-│   │   │   ├── styles.ts              # 37 个内联样式对象
+│   │   │   ├── styles.ts              # 内联样式对象（含弹窗/模态框样式）
+│   │   │   ├── theme.tsx              # ThemeProvider + useTheme
 │   │   │   ├── index.html
 │   │   │   ├── main.tsx               # ReactDOM 入口
 │   │   │   ├── hooks/                 # 状态逻辑层
 │   │   │   │   ├── useConfig.ts       #   配置加载 + 同步状态
 │   │   │   │   ├── useBookmarkNavigation.ts  #   文件夹导航 + 面包屑
-│   │   │   │   ├── useSync.ts         #   推送/拉取同步操作
+│   │   │   │   ├── useBookmarkStats.ts       #   书签统计
+│   │   │   │   ├── useBookmarkVisitCounts.ts #   访问次数获取
+│   │   │   │   ├── useFolderPicker.ts        #   保存目标文件夹选择
+│   │   │   │   ├── useSync.ts         #   推送/拉取同步操作（含远程文件列表）
 │   │   │   │   └── useDiffReview.ts   #   差异审核状态管理
 │   │   │   └── components/            # 展示组件层
 │   │   │       ├── Toolbar.tsx         #   顶部工具栏
 │   │   │       ├── BreadcrumbNav.tsx   #   面包屑导航
 │   │   │       ├── BookmarkList.tsx    #   书签列表 + 文件夹标签
+│   │   │       ├── BookmarkStats.tsx   #   书签统计展示
 │   │   │       ├── DiffReviewPanel.tsx #   差异审核面板
+│   │   │       ├── FilePickModal.tsx   #   推送/拉取文件选择弹窗（含新建）
+│   │   │       ├── PushConfirmModal.tsx#   推送预览确认弹窗
+│   │   │       ├── FolderPicker.tsx    #   保存书签目标文件夹选择
 │   │   │       ├── LoadingView.tsx     #   加载状态
 │   │   │       └── UnconfiguredView.tsx #  未配置提示
 │   │   ├── options/                   # 设置页面（React）
-│   │   │   ├── App.tsx                # 配置表单（~111 行）
+│   │   │   ├── App.tsx                # 配置表单（~329 行）
+│   │   │   ├── palette.ts             # 暗色/亮色调色板
 │   │   │   ├── index.html
 │   │   │   ├── main.tsx
-│   │   │   └── hooks/
-│   │   │       └── useConfigForm.ts   #   表单状态管理
+│   │   │   ├── hooks/
+│   │   │   │   ├── useConfigForm.ts   #   表单状态管理
+│   │   │   │   ├── useCommands.ts     #   快捷键列表
+│   │   │   │   └── useRemoteFiles.ts  #   远程书签文件列表拉取
+│   │   │   └── components/
+│   │   │       └── FileDefaultPicker.tsx # 默认文件下拉 + 新建（英文名校验）
 │   │   └── background/                # Service Worker
-│   │       ├── service-worker.ts      #   消息路由 + 初始化（~120 行）
+│   │       ├── service-worker.ts      #   消息路由 + 初始化（~190 行）
 │   │       ├── bookmark-utils.ts      #   书签树遍历 / 文件夹路径解析
 │   │       ├── folder-utils.ts        #   空文件夹检测与递归清理
 │   │       └── diff-applier.ts        #   将差异应用到浏览器原生书签
 │   ├── shared/                        # 共享层
 │   │   ├── types.ts                   #   类型定义（Bookmark, AppConfig 等）
-│   │   └── sync.ts                    #   SyncEngine（GitHub REST API 客户端）
-│   └── __tests__/                     # 测试（10 文件 / 49 用例）
-│       ├── shared/                    #   sync (10) + types (1)
-│       ├── popup/hooks/               #   useDiffReview (6)
-│       ├── popup/components/          #   Toolbar + BreadcrumbNav + DiffReviewPanel + StatusViews (19)
-│       ├── options/hooks/             #   useConfigForm (5)
-│       └── background/                #   bookmark-utils + folder-utils (8)
+│   │   └── sync.ts                    #   SyncEngine（GitHub REST API 客户端，多文件支持）
+│   └── __tests__/                     # 测试（21 文件 / 145 用例）
+│       ├── shared/                    #   sync（多文件/列表/校验）+ types
+│       ├── background/                #   bookmark-utils + diff-applier + folder-utils
+│       ├── popup/hooks/               #   useBookmarkStats + useSync + useDiffReview + useFolderPicker
+│       ├── popup/components/          #   Toolbar + BreadcrumbNav + BookmarkList + BookmarkStats
+│       │                               #   + DiffReviewPanel + FilePickModal + FolderPicker
+│       │                               #   + PushConfirmModal + StatusViews
+│       ├── options/hooks/             #   useCommands + useConfigForm
+│       └── options/components/        #   FileDefaultPicker
 ├── vite.config.ts                     # Vite + CRX 打包配置
 ├── vitest.config.ts                   # Vitest 测试配置
 ├── tsconfig.json
@@ -207,12 +227,12 @@ bookmarks-manager/
 
 | 模块 | 角色 | 职责 |
 |------|------|------|
-| **Popup** | 用户界面 | 书签浏览、文件夹导航、一键保存、同步触发、差异审核 |
-| **Options** | 配置管理 | GitHub 连接配置、同步策略参数 |
+| **Popup** | 用户界面 | 书签浏览、文件夹导航、一键保存、文件选择、同步触发、差异审核 |
+| **Options** | 配置管理 | GitHub 连接配置、推送/拉取默认文件设置（远程下拉 + 新建） |
 | **Service Worker** | 后台引擎 | 消息路由、浏览器书签读写、GitHub API 调用、差异计算与应用 |
 | **Hooks** | 状态逻辑 | 独立 hooks 管理导航/同步/审核/配置，与 UI 组件解耦 |
 | **Tools** | 公共服务 | 书签树遍历、文件夹路径解析、空文件夹检测与递归清理 |
-| **Sync Engine** | 同步核心 | GitHub REST API（base64 编解码、文件 SHA 管理）、差异计算算法 |
+| **Sync Engine** | 同步核心 | GitHub REST API（多书签文件、base64 编解码、文件 SHA 管理）、差异计算算法 |
 
 ### 数据流
 
@@ -224,8 +244,12 @@ bookmarks-manager/
                                                               │
                                                    ┌──────────▼──────────┐
                                                    │   GitHub REST API   │
-                                                   │  /repos/{owner}/{repo}/contents/bookmarks.json  │
+                                                   │ /repos/{owner}/{repo}/contents/bookmarks-[name].json  │
                                                    └─────────────────────┘
+```
+
+### 数据流
+
 ```
 
 ---
@@ -261,10 +285,10 @@ pnpm test        # 单次运行全部测试
 pnpm test:watch  # watch 模式
 ```
 
-基于 [Vitest](https://vitest.dev/) + [Testing Library](https://testing-library.com/)，覆盖：
-- 共享层：`SyncEngine.computeDiff` 差异算法、`normalizeFolderPath` 路径规范化
-- Hooks：差异审核状态流转、配置表单读写
-- 组件：工具栏按钮交互、面包屑导航、差异审核面板渲染
+基于 [Vitest](https://vitest.dev/) + [Testing Library](https://testing-library.com/)，当前 **21 个测试文件 / 145 个用例**，覆盖：
+- 共享层：`SyncEngine` 多文件推送/拉取/列表（含空仓库 404 处理）、文件名校验、`computeDiff` 差异算法、`normalizeFolderPath` 路径规范化
+- Hooks：差异审核状态流转、同步操作（携带 fileName）、配置表单读写、远程文件列表
+- 组件：文件选择弹窗（默认预选 / 新建校验）、默认文件下拉（未推送标记）、推送确认、工具栏、面包屑导航、差异审核面板
 - 后台工具：书签树遍历展平、空文件夹检测与递归清理
 
 ### 预览构建产物
