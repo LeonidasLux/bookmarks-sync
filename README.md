@@ -17,6 +17,9 @@
   <a href="https://github.com/LeonidasLux/bookmarks-manager">
     <img src="https://img.shields.io/github/package-json/v/LeonidasLux/bookmarks-manager" alt="Version" />
   </a>
+  <a href="https://chromewebstore.google.com/detail/bookmarks-manager/jpojpiagoljceiakjopfgphachnlciop">
+    <img src="https://img.shields.io/chrome-web-store/v/jpojpiagoljceiakjopfgphachnlciop?label=Chrome%20Web%20Store&color=4285F4" alt="Chrome Web Store" />
+  </a>
   <img src="https://img.shields.io/badge/Manifest-v3-8A2BE2" alt="Manifest V3" />
   <img src="https://img.shields.io/badge/pnpm-%3E%3D11.2-orange" alt="pnpm" />
 </p>
@@ -73,7 +76,11 @@
 
 ### 安装扩展
 
-由于尚未上架 Chrome 网上应用店，需要通过开发者模式加载：
+已上架 **Chrome 网上应用店**，推荐直接安装：
+
+- [Chrome Web Store — Bookmarks Manager](https://chromewebstore.google.com/detail/bookmarks-manager/jpojpiagoljceiakjopfgphachnlciop)
+
+如需使用最新开发版本，可通过开发者模式加载源码构建：
 
 1. **构建扩展**
    ```bash

@@ -12,6 +12,8 @@ interface FileDefaultPickerProps {
   files: string[]
   loading: boolean
   error: string | null
+  /** 请求完成但列表为空时的提示文案 */
+  emptyHint?: string | null
   onRefresh: () => void
   colors: Palette
 }
@@ -19,7 +21,7 @@ interface FileDefaultPickerProps {
 /**
  * 设置页默认书签文件选择器：远程文件下拉 + 新建（英文名）
  */
-export function FileDefaultPicker({ label, description, value, onChange, files, loading, error, onRefresh, colors }: FileDefaultPickerProps) {
+export function FileDefaultPicker({ label, description, value, onChange, files, loading, error, emptyHint, onRefresh, colors }: FileDefaultPickerProps) {
   const [mode, setMode] = useState<'existing' | 'new'>(() =>
     value && !files.includes(value) ? 'new' : 'existing',
   )
@@ -156,6 +158,12 @@ export function FileDefaultPicker({ label, description, value, onChange, files, 
       {error && (
         <p style={{ fontSize: '11px', color: colors.orange, margin: '0.375rem 0 0', fontFamily: 'inherit' }}>
           # {error}（点 ⟳ 重试）
+        </p>
+      )}
+
+      {!error && emptyHint && files.length === 0 && !loading && (
+        <p style={{ fontSize: '11px', color: colors.textDim, margin: '0.375rem 0 0', fontFamily: 'inherit' }}>
+          # {emptyHint}
         </p>
       )}
     </div>

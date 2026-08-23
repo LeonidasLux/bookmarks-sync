@@ -120,6 +120,7 @@ export class SyncEngine {
 
   /** 列出仓库根目录下所有书签文件（bookmarks*.json，兼容旧版 bookmarks.json） */
   async listBookmarkFiles(steps: string[]): Promise<string[]> {
+    console.log('[sync] 列出书签文件:', `${this.repoUrl}/contents`)
     steps.push('GET .../contents/ (列出书签文件)')
     const res = await fetch(`${this.repoUrl}/contents`, {
       headers: this.headers,

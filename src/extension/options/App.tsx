@@ -10,9 +10,16 @@ const font = '"JetBrains Mono", "SF Mono", "Fira Code", "Consolas", monospace'
 function App() {
   const { config, saved, save, updateField } = useConfigForm()
   const { commands } = useCommands()
-  const githubConfigured = !!(config?.githubToken && config?.repoOwner && config?.repoName)
-  const syncFiles = useRemoteFiles(githubConfigured)
-  const pullFiles = useRemoteFiles(githubConfigured)
+  const syncFiles = useRemoteFiles(
+    config?.githubToken ?? '',
+    config?.repoOwner ?? '',
+    config?.repoName ?? '',
+  )
+  const pullFiles = useRemoteFiles(
+    config?.githubToken ?? '',
+    config?.repoOwner ?? '',
+    config?.repoName ?? '',
+  )
   const [focusField, setFocusField] = useState<string | null>(null)
   const [showToken, setShowToken] = useState(false)
   const [systemDark, setSystemDark] = useState(
@@ -215,6 +222,7 @@ function App() {
         files={syncFiles.files}
         loading={syncFiles.loading}
         error={syncFiles.error}
+        emptyHint={syncFiles.ready && syncFiles.files.length === 0 ? '远程暂无 bookmarks 文件，可直接新建' : null}
         onRefresh={syncFiles.refresh}
         colors={colors}
       />
@@ -227,6 +235,7 @@ function App() {
         files={pullFiles.files}
         loading={pullFiles.loading}
         error={pullFiles.error}
+        emptyHint={pullFiles.ready && pullFiles.files.length === 0 ? '远程暂无 bookmarks 文件' : null}
         onRefresh={pullFiles.refresh}
         colors={colors}
       />

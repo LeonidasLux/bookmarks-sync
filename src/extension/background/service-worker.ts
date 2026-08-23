@@ -119,14 +119,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       ;(async () => {
         const steps: string[] = []
         try {
-          if (!config.githubToken || !config.repoOwner || !config.repoName) {
+          // 优先使用消息携带的表单配置（设置页可能尚未保存）
+          const listConfig = {
+            ...config,
+            githubToken: (msg.githubToken as string) || config.githubToken,
+            repoOwner: (msg.repoOwner as string) || config.repoOwner,
+            repoName: (msg.repoName as string) || config.repoName,
+          }
+          if (!listConfig.githubToken || !listConfig.repoOwner || !listConfig.repoName) {
             steps.push('配置不完整')
             sendResponse({ success: false, files: [], error: '请先完成设置', steps })
             return
           }
-          if (!syncEngine) syncEngine = new SyncEngine(config)
 
-          const files = await syncEngine.listBookmarkFiles(steps)
+          const files = await new SyncEngine(listConfig).listBookmarkFiles(steps)
           sendResponse({ success: true, files, steps })
         } catch (e) {
           steps.push(`❌ ${(e as Error).message}`)
