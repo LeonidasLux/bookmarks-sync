@@ -1,6 +1,8 @@
 import type { AppConfig, Bookmark, BookmarkDiff } from '../../shared/types'
 import { DEFAULT_CONFIG } from '../../shared/types'
 import { SyncEngine, LEGACY_BOOKMARK_PATH } from '../../shared/sync'
+import { applyDevEnv } from '../../shared/env'
+import { AUTO_SYNC_ALARM, scheduleAutoSync } from './auto-sync'
 import { getBrowserBookmarks } from './bookmark-utils'
 import { computeEmptyFolders } from './folder-utils'
 import { applyDiffsToBrowser, reorderBookmarks, showResult } from './diff-applier'
@@ -11,17 +13,73 @@ let config: AppConfig = DEFAULT_CONFIG
 let syncEngine: SyncEngine | null = null
 /** 上次 PULL 获取的远程书签数组，用于后续 APPLY 时重排顺序 */
 let lastRemoteBookmarks: Bookmark[] = []
+/** 定时同步执行中标志，防止 alarm 重入 */
+let autoSyncRunning = false
 
 function loadConfig(): Promise<AppConfig> {
   return new Promise((resolve) => {
     chrome.storage.local.get('config', (result) => {
-      const cfg = { ...DEFAULT_CONFIG, ...(result.config ?? {}) } as AppConfig
+      const cfg = applyDevEnv({ ...DEFAULT_CONFIG, ...(result.config ?? {}) } as AppConfig)
       config = cfg
       syncEngine = new SyncEngine(cfg)
+      scheduleAutoSync(cfg)
       resolve(cfg)
     })
   })
 }
+
+/** 配置不完整错误文案（手动推送时保持原行为：不写失败日志） */
+const CONFIG_INCOMPLETE = '请先完成设置'
+
+/**
+ * 推送本地书签到远程（手动推送与定时同步共用）。
+ * 成功时写入 lastSync/syncLog 并返回时间戳；失败抛出异常。
+ */
+async function pushToGitHub(fileName: string | undefined, steps: string[]): Promise<string> {
+  if (!config.githubToken || !config.repoOwner || !config.repoName) {
+    steps.push('配置不完整')
+    showResult(steps, false)
+    throw new Error(CONFIG_INCOMPLETE)
+  }
+  if (!syncEngine) syncEngine = new SyncEngine(config)
+
+  const target = fileName || config.syncFileName || LEGACY_BOOKMARK_PATH
+  const local = await getBrowserBookmarks(steps)
+  await syncEngine.pushOnly(local, steps, target)
+  steps.push(`完成: ${local.length} 条 -> ${target}`)
+  showResult(steps, true)
+  const timestamp = new Date().toISOString()
+  chrome.storage.local.set({ lastSync: timestamp, syncLog: { success: true, timestamp, steps } })
+  return timestamp
+}
+
+/** 定时同步：刷新配置后执行一次推送（alarm 触发入口） */
+export async function runAutoSync(): Promise<void> {
+  if (autoSyncRunning) return
+  autoSyncRunning = true
+  const steps: string[] = ['[定时同步] 开始']
+  try {
+    await loadConfig()
+    await pushToGitHub(undefined, steps)
+    steps.push('[定时同步] 完成')
+  } catch (e) {
+    steps.push(`❌ ${(e as Error).message}`)
+    const timestamp = new Date().toISOString()
+    chrome.storage.local.set({ syncLog: { success: false, timestamp, error: (e as Error).message, steps } })
+  } finally {
+    autoSyncRunning = false
+  }
+}
+
+/** alarm 触发入口：仅响应定时同步 alarm */
+export function handleAutoSyncAlarm(alarm: chrome.alarms.Alarm): void {
+  if (alarm.name === AUTO_SYNC_ALARM) {
+    void runAutoSync()
+  }
+}
+
+// ---- 定时同步 ----
+chrome.alarms.onAlarm.addListener(handleAutoSyncAlarm)
 
 // ---- 快捷键：保存书签 ----
 chrome.commands.onCommand.addListener(async (command) => {
@@ -54,28 +112,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       ;(async () => {
         const steps: string[] = []
         try {
-          if (!config.githubToken || !config.repoOwner || !config.repoName) {
-            steps.push('配置不完整')
-            showResult(steps, false)
-            sendResponse({ success: false, error: '请先完成设置', steps })
-            return
-          }
-          if (!syncEngine) syncEngine = new SyncEngine(config)
-
-          const fileName = (msg.fileName as string) || config.syncFileName || LEGACY_BOOKMARK_PATH
-          const local = await getBrowserBookmarks(steps)
-          await syncEngine.pushOnly(local, steps, fileName)
-          steps.push(`完成: ${local.length} 条 -> ${fileName}`)
-          showResult(steps, true)
-          const timestamp = new Date().toISOString()
-          chrome.storage.local.set({ lastSync: timestamp, syncLog: { success: true, timestamp, steps } })
+          const timestamp = await pushToGitHub(msg.fileName as string | undefined, steps)
           sendResponse({ success: true, timestamp, steps })
         } catch (e) {
-          steps.push(`❌ ${(e as Error).message}`)
-          showResult(steps, false)
-          const timestamp = new Date().toISOString()
-          chrome.storage.local.set({ syncLog: { success: false, timestamp, error: (e as Error).message, steps } })
-          sendResponse({ success: false, error: (e as Error).message, steps })
+          const error = (e as Error).message
+          if (error !== CONFIG_INCOMPLETE) {
+            steps.push(`❌ ${error}`)
+            showResult(steps, false)
+            const timestamp = new Date().toISOString()
+            chrome.storage.local.set({ syncLog: { success: false, timestamp, error, steps } })
+          }
+          sendResponse({ success: false, error, steps })
         }
       })()
       return true
@@ -181,13 +228,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
     case 'GET_CONFIG':
       chrome.storage.local.get('config', (result) => {
-        sendResponse({ config: { ...DEFAULT_CONFIG, ...(result.config ?? {}) } })
+        sendResponse({ config: applyDevEnv({ ...DEFAULT_CONFIG, ...(result.config ?? {}) } as AppConfig) })
       })
       return true
 
     case 'SAVE_CONFIG':
       config = msg.config as AppConfig
       syncEngine = new SyncEngine(config)
+      scheduleAutoSync(config)
       chrome.storage.local.set({ config }, () => {
         sendResponse({ success: true })
       })

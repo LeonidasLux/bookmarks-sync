@@ -17,6 +17,7 @@ const TEST_CONFIG: AppConfig = {
   theme: 'dark',
   syncFileName: '',
   pullFileName: '',
+  autoSyncInterval: 0,
 }
 
 function mockFetchResponse(status: number, body: unknown) {

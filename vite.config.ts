@@ -3,6 +3,13 @@ import react from '@vitejs/plugin-react'
 import { crx } from '@crxjs/vite-plugin'
 
 export default defineConfig({
+  server: {
+    port: 5173,
+    strictPort: true,
+    hmr: {
+      port: 5173,
+    },
+  },
   plugins: [
     react(),
     crx({
@@ -11,7 +18,7 @@ export default defineConfig({
         name: 'Bookmarks Manager',
         version: '1.3.1',
         description: 'Browser bookmark manager with GitHub sync',
-        permissions: ['storage', 'bookmarks', 'activeTab', 'favicon', 'history'],
+        permissions: ['storage', 'bookmarks', 'activeTab', 'favicon', 'history', 'alarms'],
         host_permissions: ['https://api.github.com/*'],
         action: {
           default_popup: 'src/extension/popup/index.html',

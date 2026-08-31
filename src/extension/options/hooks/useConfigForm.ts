@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { AppConfig } from '../../../shared/types'
 import { DEFAULT_CONFIG } from '../../../shared/types'
+import { applyDevEnv } from '../../../shared/env'
 
 export function useConfigForm() {
-  const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG)
+  const [config, setConfig] = useState<AppConfig>(() => applyDevEnv(DEFAULT_CONFIG))
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     chrome.storage.local.get('config', (result) => {
       if (result.config) {
-        setConfig({ ...DEFAULT_CONFIG, ...result.config })
+        setConfig(applyDevEnv({ ...DEFAULT_CONFIG, ...result.config }))
       }
     })
   }, [])

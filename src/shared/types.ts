@@ -24,6 +24,8 @@ export interface AppConfig {
   syncFileName: string
   /** 拉取默认文件，空表示未配置 */
   pullFileName: string
+  /** 定时同步间隔（分钟），0 表示禁用 */
+  autoSyncInterval: number
 }
 
 export interface SyncResult {
@@ -68,4 +70,5 @@ export const DEFAULT_CONFIG: AppConfig = {
   theme: 'system',
   syncFileName: '',
   pullFileName: '',
+  autoSyncInterval: 0,
 }

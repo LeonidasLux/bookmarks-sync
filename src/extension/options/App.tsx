@@ -263,6 +263,44 @@ function App() {
         border: `1px solid ${colors.border}`,
       }}>
         <h2 style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 0.75rem', fontFamily: font }}>
+          <span style={{ color: colors.accent }}>⚡</span> 定时同步
+        </h2>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '13px', marginBottom: '0.75rem' }}>
+          <input
+            type="checkbox"
+            checked={(config?.autoSyncInterval ?? 0) > 0}
+            onChange={(e) => updateField('autoSyncInterval', e.target.checked ? 30 : 0)}
+            style={{ accentColor: colors.accent }}
+          />
+          <span style={{ fontWeight: 500 }}>启用定时同步</span>
+        </label>
+        {(config?.autoSyncInterval ?? 0) > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '12px', color: colors.textMuted }}>间隔</span>
+            <input
+              type="number"
+              min={1}
+              max={10080}
+              value={config?.autoSyncInterval ?? 30}
+              onChange={(e) => updateField('autoSyncInterval', Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+              style={{ ...inputBase, width: 96 }}
+            />
+            <span style={{ fontSize: '12px', color: colors.textMuted }}>分钟</span>
+          </div>
+        )}
+        <p style={{ fontSize: '11px', color: colors.textDim, margin: 0, fontFamily: font }}>
+          # 每隔固定时间自动把本地书签推送到远程同步文件，保存后生效
+        </p>
+      </div>
+
+      <div style={{
+        marginBottom: '1.5rem',
+        padding: '1rem',
+        background: colors.surface,
+        borderRadius: '8px',
+        border: `1px solid ${colors.border}`,
+      }}>
+        <h2 style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 0.75rem', fontFamily: font }}>
           <span style={{ color: colors.accent }}>⌨</span> 快捷键
         </h2>
         <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', fontFamily: font }}>
