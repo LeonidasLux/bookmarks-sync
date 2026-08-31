@@ -15,7 +15,7 @@ export default defineConfig({
     crx({
       manifest: {
         manifest_version: 3,
-        name: 'Bookmarks Sync',
+        name: '书签远程同步',
         version: '1.3.1',
         description: 'Browser bookmarks sync with GitHub',
         permissions: ['storage', 'bookmarks', 'activeTab', 'favicon', 'history', 'alarms'],
