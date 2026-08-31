@@ -1,8 +1,8 @@
 <p align="center">
   <br>
-  <img width="200" src="./public/icon128.png" alt="Bookmarks Manager logo" />
+  <img width="200" src="./public/icon128.png" alt="Bookmarks Sync logo" />
   <br>
-  <h1 align="center">Bookmarks Manager</h1>
+  <h1 align="center">Bookmarks Sync</h1>
   <p align="center">
     以 GitHub 仓库为后端的浏览器书签管理器扩展
     <br />
@@ -11,13 +11,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/LeonidasLux/bookmarks-manager/blob/main/LICENSE">
+  <a href="https://github.com/LeonidasLux/bookmarks-sync/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" />
   </a>
-  <a href="https://github.com/LeonidasLux/bookmarks-manager">
-    <img src="https://img.shields.io/github/package-json/v/LeonidasLux/bookmarks-manager" alt="Version" />
+  <a href="https://github.com/LeonidasLux/bookmarks-sync">
+    <img src="https://img.shields.io/github/package-json/v/LeonidasLux/bookmarks-sync" alt="Version" />
   </a>
-  <a href="https://chromewebstore.google.com/detail/bookmarks-manager/jpojpiagoljceiakjopfgphachnlciop">
+  <a href="https://chromewebstore.google.com/detail/bookmarks-sync/jpojpiagoljceiakjopfgphachnlciop">
     <img src="https://img.shields.io/chrome-web-store/v/jpojpiagoljceiakjopfgphachnlciop?label=Chrome%20Web%20Store&color=4285F4" alt="Chrome Web Store" />
   </a>
   <img src="https://img.shields.io/badge/Manifest-v3-8A2BE2" alt="Manifest V3" />
@@ -28,7 +28,7 @@
 
 ## 📖 概述
 
-**Bookmarks Manager** 是一款 Chrome / Edge 浏览器扩展，将你的浏览器书签与 GitHub 仓库双向同步。书签数据以 `bookmarks-[name].json` 文件存储在 Git 仓库中（兼容旧版 `bookmarks.json`），**不同浏览器 / 设备可分别使用独立文件**，你可以：
+**Bookmarks Sync** 是一款 Chrome / Edge 浏览器扩展，将你的浏览器书签与 GitHub 仓库双向同步。书签数据以 `bookmarks-[name].json` 文件存储在 Git 仓库中（兼容旧版 `bookmarks.json`），**不同浏览器 / 设备可分别使用独立文件**，你可以：
 
 - 在**多台电脑 / 多个浏览器**之间保持书签一致
 - 通过 GitHub 的版本历史追溯书签变更
@@ -79,14 +79,14 @@
 
 已上架 **Chrome 网上应用店**，推荐直接安装：
 
-- [Chrome Web Store — Bookmarks Manager](https://chromewebstore.google.com/detail/bookmarks-manager/jpojpiagoljceiakjopfgphachnlciop)
+- [Chrome Web Store — Bookmarks Sync](https://chromewebstore.google.com/detail/bookmarks-sync/jpojpiagoljceiakjopfgphachnlciop)
 
 如需使用最新开发版本，可通过开发者模式加载源码构建：
 
 1. **构建扩展**
    ```bash
-   git clone https://github.com/LeonidasLux/bookmarks-manager.git
-   cd bookmarks-manager
+   git clone https://github.com/LeonidasLux/bookmarks-sync.git
+   cd bookmarks-sync
    pnpm install
    pnpm build
    ```
@@ -125,7 +125,7 @@
 |--------|------|------|
 | **GitHub Token** | 个人访问令牌 | `ghp_xxxxxxxxxx` |
 | **仓库 Owner** | 仓库所属用户/组织 | `LeonidasLux` |
-| **仓库名称** | 存储书签的仓库名 | `bookmarks-manager` |
+| **仓库名称** | 存储书签的仓库名 | `bookmarks-sync` |
 | **同步默认文件** | 推送时默认写入的远程书签文件（可下拉选择远程文件或新建） | `bookmarks-chrome.json` |
 | **拉取默认文件** | 拉取时默认读取的远程书签文件 | `bookmarks-chrome.json` |
 | **自动清理空文件夹** | 应用差异后删除变空的文件夹 | 开/关 |
@@ -167,7 +167,7 @@
 ## 🏗️ 项目架构
 
 ```
-bookmarks-manager/
+bookmarks-sync/
 ├── src/
 │   ├── extension/
 │   │   ├── popup/                     # 弹窗 UI（React）

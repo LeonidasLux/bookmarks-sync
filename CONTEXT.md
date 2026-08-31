@@ -1,4 +1,4 @@
-# Bookmarks Manager
+# Bookmarks Sync
 
 浏览器书签管理器——Chrome/Edge 扩展，以 GitHub 仓库为后端存储和同步个人书签。
 
@@ -43,7 +43,7 @@ _Avoid_: 刷新
 ## Project Structure
 
 ```
-bookmarks-manager/
+bookmarks-sync/
 ├── src/
 │   ├── extension/
 │   │   ├── popup/          # 弹窗 UI：书签浏览、文件选择、推送/拉取

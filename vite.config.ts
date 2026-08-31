@@ -15,14 +15,14 @@ export default defineConfig({
     crx({
       manifest: {
         manifest_version: 3,
-        name: 'Bookmarks Manager',
+        name: 'Bookmarks Sync',
         version: '1.3.1',
-        description: 'Browser bookmark manager with GitHub sync',
+        description: 'Browser bookmarks sync with GitHub',
         permissions: ['storage', 'bookmarks', 'activeTab', 'favicon', 'history', 'alarms'],
         host_permissions: ['https://api.github.com/*'],
         action: {
           default_popup: 'src/extension/popup/index.html',
-          default_title: 'Bookmarks Manager',
+          default_title: 'Bookmarks Sync',
           default_icon: {
             '16': 'icon16.png',
             '32': 'icon32.png',

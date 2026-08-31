@@ -27,7 +27,7 @@ jobs:
       - name: Package extension
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
-          PACKAGE_NAME="bookmarks-manager-${TAG_NAME}"
+          PACKAGE_NAME="bookmarks-sync-${TAG_NAME}"
           cd dist
           zip -r "../${PACKAGE_NAME}.zip" .
           cd ..
@@ -36,9 +36,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Bookmarks Manager ${{ github.ref_name }}
+          name: Bookmarks Sync ${{ github.ref_name }}
           body: |
             See [commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for changes.
           draft: false
           files: |
-            bookmarks-manager-${{ github.ref_name }}.zip
+            bookmarks-sync-${{ github.ref_name }}.zip

@@ -84,7 +84,7 @@ function App() {
         paddingBottom: '0.75rem',
         marginBottom: '1.5rem',
       }}>
-        <span style={{ color: colors.accent }}>◆</span> Bookmarks Manager 设置
+        <span style={{ color: colors.accent }}>◆</span> Bookmarks Sync 设置
       </h1>
 
       {/* 主题选择器 */}

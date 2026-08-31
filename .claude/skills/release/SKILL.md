@@ -53,7 +53,7 @@ description: >
 
 ### 9. 确认 GitHub Actions 已触发
 - 告知用户 Release workflow 已自动触发
-- 可在 https://github.com/0668001277/bookmarks-manager/actions 查看进度
+- 可在 https://github.com/0668001277/bookmarks-sync/actions 查看进度
 
 ## 错误处理
 
