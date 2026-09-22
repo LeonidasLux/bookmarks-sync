@@ -1,429 +1,87 @@
-import { useState, useEffect } from 'react'
 import { useConfigForm } from './hooks/useConfigForm'
 import { useCommands } from './hooks/useCommands'
 import { useRemoteFiles } from './hooks/useRemoteFiles'
-import { palettes, type Palette } from './palette'
-import { FileDefaultPicker } from './components/FileDefaultPicker'
-
-const font = '"JetBrains Mono", "SF Mono", "Fira Code", "Consolas", monospace'
+import { useBodyTheme, useResolvedTheme } from './hooks/useTheme'
+import { palettes } from './palette'
+import { font } from './styles'
+import { AutoSyncSection } from './components/AutoSyncSection'
+import { GithubSection } from './components/GithubSection'
+import { SaveBar } from './components/SaveBar'
+import { SettingsColumns } from './components/SettingsColumns'
+import { ShortcutsSection } from './components/ShortcutsSection'
+import { SuggestSection } from './components/SuggestSection'
+import { SyncFilesSection } from './components/SyncFilesSection'
+import { SyncOptionsSection } from './components/SyncOptionsSection'
+import { ThemeSelector } from './components/ThemeSelector'
 
 function App() {
   const { config, saved, save, updateField } = useConfigForm()
   const { commands } = useCommands()
-  const syncFiles = useRemoteFiles(
-    config?.githubToken ?? '',
-    config?.repoOwner ?? '',
-    config?.repoName ?? '',
-  )
-  const pullFiles = useRemoteFiles(
-    config?.githubToken ?? '',
-    config?.repoOwner ?? '',
-    config?.repoName ?? '',
-  )
-  const [focusField, setFocusField] = useState<string | null>(null)
-  const [showToken, setShowToken] = useState(false)
-  const [showTypesafeKey, setShowTypesafeKey] = useState(false)
-  const [systemDark, setSystemDark] = useState(
-    () => window.matchMedia('(prefers-color-scheme: dark)').matches,
-  )
+  const syncFiles = useRemoteFiles(config.githubToken, config.repoOwner, config.repoName)
+  const pullFiles = useRemoteFiles(config.githubToken, config.repoOwner, config.repoName)
+  const mode = useResolvedTheme(config.theme)
+  const colors = palettes[mode]
 
-  // 监听系统主题变化
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  // 只有系统主题变化时才跟随 systemDark
-  const resolvedMode = config?.theme === 'system'
-    ? (systemDark ? 'dark' : 'light')
-    : config?.theme ?? 'dark'
-
-  const colors: Palette = palettes[resolvedMode]
-
-  // 同步 body 背景
-  useEffect(() => {
-    document.body.style.background = colors.bg
-    document.body.style.color = colors.text
-    document.body.style.transition = 'background 0.2s, color 0.2s'
-  }, [colors])
-
-  const inputBase: React.CSSProperties = {
-    width: '100%',
-    padding: '8px 12px',
-    border: `1px solid ${colors.border}`,
-    borderRadius: '6px',
-    background: colors.bg,
-    color: colors.text,
-    fontFamily: font,
-    fontSize: '13px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-  }
-
-  const themedFocus = {
-    borderColor: colors.accent,
-    boxShadow: `0 0 0 3px ${colors.accentGlow}`,
-  }
+  useBodyTheme(colors.bg, colors.text)
 
   return (
     <div style={{
-      maxWidth: 520,
+      maxWidth: 960,
       margin: '2rem auto',
-      padding: '0 1rem',
+      padding: '0 1.5rem',
       fontFamily: font,
       color: colors.text,
       background: 'transparent',
     }}>
-      <h1 style={{
-        fontSize: '1.25rem',
-        fontWeight: 600,
-        letterSpacing: '0.5px',
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.75rem',
         borderBottom: `1px solid ${colors.borderLight}`,
         paddingBottom: '0.75rem',
         marginBottom: '1.5rem',
       }}>
-        <span style={{ color: colors.accent }}>◆</span> Bookmarks Sync 设置
-      </h1>
-
-      {/* 主题选择器 */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '12px', fontWeight: 500, color: colors.textMuted }}>
-          <span style={{ color: colors.accent }}>$</span> THEME
-        </label>
-        <select
-          value={config?.theme ?? 'system'}
-          onChange={(e) => updateField('theme', e.target.value as 'dark' | 'light' | 'system')}
-          onFocus={() => setFocusField('theme')}
-          onBlur={() => setFocusField(null)}
-          style={{
-            ...inputBase,
-            width: 'auto',
-            minWidth: 160,
-            cursor: 'pointer',
-            ...(focusField === 'theme' ? themedFocus : {}),
-          }}
-        >
-          <option value="system">🌓 跟随系统</option>
-          <option value="dark">🌙 暗色</option>
-          <option value="light">☀️ 亮色</option>
-        </select>
-      </div>
-
-      {/* GitHub Token */}
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '12px', fontWeight: 500, color: colors.textMuted }}>
-          <span style={{ color: colors.accent }}>$</span> GITHUB_TOKEN <span style={{ color: colors.orange }}>*</span>
-        </label>
-        <div style={{ position: 'relative' }}>
-          <input
-            type={showToken ? 'text' : 'password'}
-            value={config?.githubToken ?? ''}
-            onChange={(e) => updateField('githubToken', e.target.value)}
-            onFocus={() => setFocusField('token')}
-            onBlur={() => setFocusField(null)}
-            style={{
-              ...inputBase,
-              paddingRight: 40,
-              ...(focusField === 'token' ? themedFocus : {}),
-            }}
-            placeholder="ghp_..."
-          />
-          <button
-            type="button"
-            onClick={() => setShowToken(prev => !prev)}
-            onFocus={() => setFocusField('token')}
-            onBlur={() => setFocusField(null)}
-            style={{
-              position: 'absolute',
-              right: 4,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px 6px',
-              color: colors.textMuted,
-              fontSize: '14px',
-              lineHeight: 1,
-            }}
-            title={showToken ? '隐藏 Token' : '显示 Token'}
-          >
-            {showToken ? '🙈' : '👁️'}
-          </button>
-        </div>
-        <p style={{ fontSize: '11px', color: colors.textDim, margin: '0.25rem 0 0 0', fontFamily: font }}>
-          # 从{' '}
-          <a
-            href="https://github.com/settings/tokens"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: colors.accent, textDecoration: 'none' }}
-          >github.com/settings/tokens</a>{' '}
-          生成 Token（需勾选 <code style={{ background: colors.surface, padding: '1px 4px', borderRadius: '3px' }}>repo</code> 权限）
-        </p>
-      </div>
-
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '12px', fontWeight: 500, color: colors.textMuted }}>
-          <span style={{ color: colors.accent }}>$</span> REPO_OWNER <span style={{ color: colors.orange }}>*</span>
-        </label>
-        <input
-          type="text"
-          value={config?.repoOwner ?? ''}
-          onChange={(e) => updateField('repoOwner', e.target.value)}
-          onFocus={() => setFocusField('owner')}
-          onBlur={() => setFocusField(null)}
-          style={{
-            ...inputBase,
-            ...(focusField === 'owner' ? themedFocus : {}),
-          }}
-          placeholder="your-username"
+        <h1 style={{
+          fontSize: '1.25rem',
+          fontWeight: 600,
+          letterSpacing: '0.5px',
+          margin: 0,
+        }}>
+          <span style={{ color: colors.accent }}>◆</span> Bookmarks Sync 设置
+        </h1>
+        <ThemeSelector
+          value={config.theme}
+          onChange={(v) => updateField('theme', v)}
+          colors={colors}
         />
-      </div>
+      </header>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '12px', fontWeight: 500, color: colors.textMuted }}>
-          <span style={{ color: colors.accent }}>$</span> REPO_NAME <span style={{ color: colors.textDim }}>(可选，默认 my-bookmarks)</span>
-        </label>
-        <input
-          type="text"
-          value={config?.repoName ?? ''}
-          onChange={(e) => updateField('repoName', e.target.value)}
-          onFocus={() => setFocusField('name')}
-          onBlur={() => setFocusField(null)}
-          style={{
-            ...inputBase,
-            ...(focusField === 'name' ? themedFocus : {}),
-          }}
-          placeholder="my-bookmarks"
-        />
-        {config?.repoOwner && (
-          <p style={{ fontSize: '11px', color: colors.textDim, margin: '0.375rem 0 0 0', fontFamily: font }}>
-            # 仓库地址：
-            <a
-              href={`https://github.com/${config.repoOwner}/${config.repoName || 'my-bookmarks'}`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: colors.accent, textDecoration: 'none', marginLeft: '0.25rem' }}
-            >
-              https://github.com/{config.repoOwner}/{config.repoName || 'my-bookmarks'}
-            </a>
-          </p>
-        )}
-      </div>
-
-      {/* TypeSafe Jev：保存书签时自动推荐目标目录 */}
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '12px', fontWeight: 500, color: colors.textMuted }}>
-          <span style={{ color: colors.accent }}>$</span> TYPESAFE_API_KEY <span style={{ color: colors.textDim }}>(可选)</span>
-        </label>
-        <div style={{ position: 'relative' }}>
-          <input
-            type={showTypesafeKey ? 'text' : 'password'}
-            value={config?.typesafeApiKey ?? ''}
-            onChange={(e) => updateField('typesafeApiKey', e.target.value)}
-            onFocus={() => setFocusField('typesafe')}
-            onBlur={() => setFocusField(null)}
-            style={{
-              ...inputBase,
-              paddingRight: 40,
-              ...(focusField === 'typesafe' ? themedFocus : {}),
-            }}
-            placeholder="ts_..."
-          />
-          <button
-            type="button"
-            onClick={() => setShowTypesafeKey(prev => !prev)}
-            onFocus={() => setFocusField('typesafe')}
-            onBlur={() => setFocusField(null)}
-            style={{
-              position: 'absolute',
-              right: 4,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px 6px',
-              color: colors.textMuted,
-              fontSize: '14px',
-              lineHeight: 1,
-            }}
-            title={showTypesafeKey ? '隐藏 Key' : '显示 Key'}
-          >
-            {showTypesafeKey ? '🙈' : '👁️'}
-          </button>
-        </div>
-        <p style={{ fontSize: '11px', color: colors.textDim, margin: '0.25rem 0 0 0', fontFamily: font }}>
-          # 配置后，保存书签时由{' '}
-          <a
-            href="https://docs.typesafe.ai/primitives/choice"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: colors.accent, textDecoration: 'none' }}
-          >TypeSafe Jev</a>{' '}
-          模型推荐目标目录（仍可在保存前手动改选）；留空则关闭该功能
-        </p>
-      </div>
-
-      <FileDefaultPicker
-        label="SYNC_FILE"
-        description="推送时默认写入的远程书签文件"
-        value={config?.syncFileName ?? ''}
-        onChange={(v) => updateField('syncFileName', v)}
-        files={syncFiles.files}
-        loading={syncFiles.loading}
-        error={syncFiles.error}
-        emptyHint={syncFiles.ready && syncFiles.files.length === 0 ? '远程暂无 bookmarks 文件，可直接新建' : null}
-        onRefresh={syncFiles.refresh}
-        colors={colors}
-      />
-
-      <FileDefaultPicker
-        label="PULL_FILE"
-        description="拉取时默认读取的远程书签文件"
-        value={config?.pullFileName ?? ''}
-        onChange={(v) => updateField('pullFileName', v)}
-        files={pullFiles.files}
-        loading={pullFiles.loading}
-        error={pullFiles.error}
-        emptyHint={pullFiles.ready && pullFiles.files.length === 0 ? '远程暂无 bookmarks 文件' : null}
-        onRefresh={pullFiles.refresh}
-        colors={colors}
-      />
-
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '13px' }}>
-          <input
-            type="checkbox"
-            checked={config?.cleanEmptyFolders ?? true}
-            onChange={(e) => updateField('cleanEmptyFolders', e.target.checked)}
-            style={{ accentColor: colors.accent }}
-          />
-          <span style={{ fontWeight: 500 }}>应用差异后自动清理空文件夹</span>
-        </label>
-        <p style={{ fontSize: '11px', color: colors.textDim, margin: '0.25rem 0 0 1.5rem', fontFamily: font }}>
-          # 删除或移走书签后，若原文件夹变空则自动删除该文件夹
-        </p>
-      </div>
-
-      <div style={{
-        marginBottom: '1.5rem',
-        padding: '1rem',
-        background: colors.surface,
-        borderRadius: '8px',
-        border: `1px solid ${colors.border}`,
-      }}>
-        <h2 style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 0.75rem', fontFamily: font }}>
-          <span style={{ color: colors.accent }}>⚡</span> 定时同步
-        </h2>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '13px', marginBottom: '0.75rem' }}>
-          <input
-            type="checkbox"
-            checked={(config?.autoSyncInterval ?? 0) > 0}
-            onChange={(e) => updateField('autoSyncInterval', e.target.checked ? 30 : 0)}
-            style={{ accentColor: colors.accent }}
-          />
-          <span style={{ fontWeight: 500 }}>启用定时同步</span>
-        </label>
-        {(config?.autoSyncInterval ?? 0) > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '12px', color: colors.textMuted }}>间隔</span>
-            <input
-              type="number"
-              min={1}
-              max={10080}
-              value={config?.autoSyncInterval ?? 30}
-              onChange={(e) => updateField('autoSyncInterval', Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-              style={{ ...inputBase, width: 96 }}
+      <SettingsColumns
+        left={
+          <>
+            <GithubSection config={config} updateField={updateField} colors={colors} />
+            <SyncFilesSection
+              config={config}
+              updateField={updateField}
+              syncFiles={syncFiles}
+              pullFiles={pullFiles}
+              colors={colors}
             />
-            <span style={{ fontSize: '12px', color: colors.textMuted }}>分钟</span>
-          </div>
-        )}
-        <p style={{ fontSize: '11px', color: colors.textDim, margin: 0, fontFamily: font }}>
-          # 每隔固定时间自动把本地书签推送到远程同步文件，保存后生效
-        </p>
-      </div>
+          </>
+        }
+        right={
+          <>
+            <SuggestSection config={config} updateField={updateField} colors={colors} />
+            <SyncOptionsSection config={config} updateField={updateField} colors={colors} />
+            <AutoSyncSection config={config} updateField={updateField} colors={colors} />
+            <ShortcutsSection commands={commands} colors={colors} />
+          </>
+        }
+      />
 
-      <div style={{
-        marginBottom: '1.5rem',
-        padding: '1rem',
-        background: colors.surface,
-        borderRadius: '8px',
-        border: `1px solid ${colors.border}`,
-      }}>
-        <h2 style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 0.75rem', fontFamily: font }}>
-          <span style={{ color: colors.accent }}>⌨</span> 快捷键
-        </h2>
-        <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', fontFamily: font }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
-              <th style={{ textAlign: 'left', padding: '0.375rem 0.5rem', fontWeight: 500, color: colors.textMuted }}>功能</th>
-              <th style={{ textAlign: 'left', padding: '0.375rem 0.5rem', fontWeight: 500, color: colors.textMuted }}>快捷键</th>
-            </tr>
-          </thead>
-          <tbody>
-            {commands.map(cmd => (
-              <tr key={cmd.name}>
-                <td style={{ padding: '0.375rem 0.5rem', color: colors.text }}>{cmd.description || cmd.name}</td>
-                <td style={{ padding: '0.375rem 0.5rem' }}>
-                  <kbd style={{
-                    padding: '2px 8px',
-                    background: colors.bg,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    color: cmd.shortcut ? colors.accent : colors.textDim,
-                    fontFamily: font,
-                  }}>
-                    {cmd.shortcut || '未设置'}
-                  </kbd>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p style={{ fontSize: '11px', color: colors.textDim, margin: '0.5rem 0 0', fontFamily: font }}>
-          # 在{' '}
-          <a
-            href="chrome://extensions/shortcuts"
-            target="_blank"
-            style={{ color: colors.accent, textDecoration: 'none' }}
-          >chrome://extensions/shortcuts</a>{' '}
-          页面可自定义快捷键
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <button
-          onClick={save}
-          style={{
-            padding: '8px 20px',
-            border: `1px solid ${colors.accent}`,
-            borderRadius: '6px',
-            background: `${colors.accent}15`,
-            color: colors.accent,
-            cursor: 'pointer',
-            fontSize: '13px',
-            fontWeight: 600,
-            fontFamily: font,
-            transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = `${colors.accent}25` }}
-          onMouseLeave={e => { e.currentTarget.style.background = `${colors.accent}15` }}
-        >
-          $ save
-        </button>
-
-        {saved && (
-          <span style={{ color: colors.green, fontSize: '12px', fontFamily: font }}>
-            <span style={{ color: colors.green }}>●</span> 已保存
-          </span>
-        )}
-      </div>
+      <SaveBar saved={saved} onSave={save} colors={colors} />
     </div>
   )
 }

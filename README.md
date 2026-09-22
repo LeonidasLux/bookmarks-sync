@@ -202,16 +202,32 @@ bookmarks-sync/
 │   │   │       ├── FolderPicker.tsx    #   保存书签目标文件夹选择
 │   │   │       ├── LoadingView.tsx     #   加载状态
 │   │   │       └── UnconfiguredView.tsx #  未配置提示
-│   │   ├── options/                   # 设置页面（React）
-│   │   │   ├── App.tsx                # 配置表单（~329 行）
+│   │   ├── options/                   # 设置页面（React，双列排布）
+│   │   │   ├── App.tsx                # 页面装配：标题栏 + 双列 + 保存栏
 │   │   │   ├── palette.ts             # 暗色/亮色调色板
+│   │   │   ├── styles.ts              # 字体 / 输入框 / 聚焦高亮等共享样式
+│   │   │   ├── types.ts               # 设置页共享类型（UpdateField）
 │   │   │   ├── index.html
 │   │   │   ├── main.tsx
 │   │   │   ├── hooks/
 │   │   │   │   ├── useConfigForm.ts   #   表单状态管理
 │   │   │   │   ├── useCommands.ts     #   快捷键列表
-│   │   │   │   └── useRemoteFiles.ts  #   远程书签文件列表拉取
+│   │   │   │   ├── useRemoteFiles.ts  #   远程书签文件列表拉取
+│   │   │   │   └── useTheme.ts        #   主题解析 + body 主题同步
 │   │   │   └── components/
+│   │   │       ├── SettingsColumns.tsx #  双列布局容器（窄屏回落单列）
+│   │   │       ├── SectionCard.tsx     #  设置区块卡片
+│   │   │       ├── FieldLabel.tsx      #  字段标签
+│   │   │       ├── TextInput.tsx       #  文本/数字输入框
+│   │   │       ├── SecretInput.tsx     #  密钥输入框（可显隐）
+│   │   │       ├── ThemeSelector.tsx   #  主题选择器
+│   │   │       ├── GithubSection.tsx   #  左列：仓库连接
+│   │   │       ├── SyncFilesSection.tsx#  左列：同步文件（推送 + 拉取）
+│   │   │       ├── SuggestSection.tsx  #  右列：TypeSafe 智能推荐
+│   │   │       ├── SyncOptionsSection.tsx # 右列：同步行为
+│   │   │       ├── AutoSyncSection.tsx #  右列：定时同步
+│   │   │       ├── ShortcutsSection.tsx#  右列：快捷键
+│   │   │       ├── SaveBar.tsx         #  底部保存栏
 │   │   │       └── FileDefaultPicker.tsx # 默认文件下拉 + 新建（英文名校验）
 │   │   └── background/                # Service Worker
 │   │       ├── service-worker.ts      #   消息路由 + 初始化（~190 行）
@@ -221,15 +237,17 @@ bookmarks-sync/
 │   ├── shared/                        # 共享层
 │   │   ├── types.ts                   #   类型定义（Bookmark, AppConfig 等）
 │   │   └── sync.ts                    #   SyncEngine（GitHub REST API 客户端，多文件支持）
-│   └── __tests__/                     # 测试（21 文件 / 145 用例）
+│   └── __tests__/                     # 测试（32 文件 / 214 用例）
 │       ├── shared/                    #   sync（多文件/列表/校验）+ types
 │       ├── background/                #   bookmark-utils + diff-applier + folder-utils
 │       ├── popup/hooks/               #   useBookmarkStats + useSync + useDiffReview + useFolderPicker
 │       ├── popup/components/          #   Toolbar + BreadcrumbNav + BookmarkList + BookmarkStats
 │       │                               #   + DiffReviewPanel + FilePickModal + FolderPicker
 │       │                               #   + PushConfirmModal + StatusViews
-│       ├── options/hooks/             #   useCommands + useConfigForm
-│       └── options/components/        #   FileDefaultPicker
+│       ├── options/hooks/             #   useConfigForm + useCommands + useRemoteFiles + useTheme
+│       ├── options/components/        #   FormControls + SettingsColumns + GithubSection
+│       │                               #   + SyncFilesSection + SettingsCards
+│       └── options/                   #   App 装配（标题栏 / 双列 / 保存）
 ├── vite.config.ts                     # Vite + CRX 打包配置
 ├── vitest.config.ts                   # Vitest 测试配置
 ├── tsconfig.json
@@ -242,7 +260,7 @@ bookmarks-sync/
 | 模块 | 角色 | 职责 |
 |------|------|------|
 | **Popup** | 用户界面 | 书签浏览、文件夹导航、一键保存、文件选择、同步触发、差异审核 |
-| **Options** | 配置管理 | GitHub 连接配置、推送/拉取默认文件设置（远程下拉 + 新建） |
+| **Options** | 配置管理 | 双列布局：左列 GitHub 连接与推送/拉取默认文件（远程下拉 + 新建），右列智能推荐、同步行为、定时同步与快捷键 |
 | **Service Worker** | 后台引擎 | 消息路由、浏览器书签读写、GitHub API 调用、差异计算与应用 |
 | **Hooks** | 状态逻辑 | 独立 hooks 管理导航/同步/审核/配置，与 UI 组件解耦 |
 | **Tools** | 公共服务 | 书签树遍历、文件夹路径解析、空文件夹检测与递归清理 |

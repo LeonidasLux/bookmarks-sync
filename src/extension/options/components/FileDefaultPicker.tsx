@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Palette } from '../palette'
 import { buildBookmarkFileName, extractBookmarkName, isValidBookmarkName } from '../../../shared/sync'
+import { inputStyle } from '../styles'
+import { FieldLabel } from './FieldLabel'
 
 const NEW_FILE_VALUE = '__new__'
 
@@ -16,12 +18,14 @@ interface FileDefaultPickerProps {
   emptyHint?: string | null
   onRefresh: () => void
   colors: Palette
+  /** 底部外边距，卡片内最后一项可传 0 */
+  marginBottom?: string | number
 }
 
 /**
  * 设置页默认书签文件选择器：远程文件下拉 + 新建（英文名）
  */
-export function FileDefaultPicker({ label, description, value, onChange, files, loading, error, emptyHint, onRefresh, colors }: FileDefaultPickerProps) {
+export function FileDefaultPicker({ label, description, value, onChange, files, loading, error, emptyHint, onRefresh, colors, marginBottom = '1rem' }: FileDefaultPickerProps) {
   const [mode, setMode] = useState<'existing' | 'new'>(() =>
     value && !files.includes(value) ? 'new' : 'existing',
   )
@@ -38,18 +42,7 @@ export function FileDefaultPicker({ label, description, value, onChange, files, 
     }
   }, [files, value])
 
-  const inputBase: React.CSSProperties = {
-    width: '100%',
-    padding: '8px 12px',
-    border: `1px solid ${colors.border}`,
-    borderRadius: '6px',
-    background: colors.bg,
-    color: colors.text,
-    fontFamily: 'inherit',
-    fontSize: '13px',
-    outline: 'none',
-    boxSizing: 'border-box',
-  }
+  const inputBase: React.CSSProperties = { ...inputStyle(colors), fontFamily: 'inherit' }
 
   const selectStyle: React.CSSProperties = {
     ...inputBase,
@@ -79,15 +72,8 @@ export function FileDefaultPicker({ label, description, value, onChange, files, 
   }
 
   return (
-    <div style={{ marginBottom: '1rem' }}>
-      <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '12px', fontWeight: 500, color: colors.textMuted }}>
-        <span style={{ color: colors.accent }}>$</span> {label}
-        {description && (
-          <span style={{ color: colors.textDim, fontWeight: 400, marginLeft: '0.5rem' }}>
-            # {description}
-          </span>
-        )}
-      </label>
+    <div style={{ marginBottom }}>
+      <FieldLabel name={label} hint={description ? `# ${description}` : undefined} colors={colors} />
 
       <div style={{ display: 'flex', gap: 6 }}>
         <select

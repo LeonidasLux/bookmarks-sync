@@ -6,11 +6,21 @@ interface RemoteFilesResult {
   error?: string
 }
 
+/** useRemoteFiles 的返回值，供设置页区块组件复用 */
+export interface RemoteFilesState {
+  files: string[]
+  loading: boolean
+  error: string | null
+  /** 是否已收到一次响应（区分「未请求」与「请求完成但为空」） */
+  ready: boolean
+  refresh: () => void
+}
+
 /**
  * 从远程仓库拉取书签文件列表（设置页默认文件下拉用）
  * 直接携带表单当前配置请求，避免与后台已保存配置脱节
  */
-export function useRemoteFiles(githubToken: string, repoOwner: string, repoName: string) {
+export function useRemoteFiles(githubToken: string, repoOwner: string, repoName: string): RemoteFilesState {
   const [files, setFiles] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

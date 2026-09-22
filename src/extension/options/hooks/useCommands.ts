@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-interface CommandInfo {
+export interface CommandInfo {
   name: string
   description?: string
   shortcut: string
