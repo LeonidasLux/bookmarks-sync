@@ -15,6 +15,7 @@ describe('UnconfiguredView', () => {
   it('应显示配置提示', () => {
     renderWithTheme(<UnconfiguredView onOpenOptions={vi.fn()} />)
     expect(screen.getByText(/请先配置 GitHub 仓库连接/)).toBeInTheDocument()
+    expect(screen.getByText(/推送 \/ 拉取已禁用/)).toBeInTheDocument()
     expect(screen.getByText('$ cd setup')).toBeInTheDocument()
   })
 })

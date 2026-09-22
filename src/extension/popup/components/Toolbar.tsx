@@ -5,6 +5,8 @@ import { BookmarkIcon, PushIcon, PullIcon, SettingsIcon } from './Icons'
 interface ToolbarProps {
   pushLoading: boolean
   pullLoading: boolean
+  /** 未配置仓库连接时禁用推送 / 拉取（书签浏览与保存仍可用） */
+  syncDisabled?: boolean
   onSaveCurrent: () => void
   onPush: () => void
   onPull: () => void
@@ -40,16 +42,32 @@ function Btn({ title, loading, disabled, children, onClick }: {
   )
 }
 
-export function Toolbar({ pushLoading, pullLoading, onSaveCurrent, onPush, onPull, onOpenOptions }: ToolbarProps) {
+export function Toolbar({ pushLoading, pullLoading, syncDisabled, onSaveCurrent, onPush, onPull, onOpenOptions }: ToolbarProps) {
   const { styles, colors } = useTheme()
+  const pushTitle = '推送到 GitHub（强制覆盖远程）'
+  const pullTitle = '从 GitHub 拉取（对比差异后手动合并）'
   return (
     <div style={styles.toolbar}>
       <span style={styles.toolbarTitle}>
         <span style={{ color: colors.accent }}>◆</span> bookmarks
       </span>
       <Btn title="保存当前标签页到书签" onClick={onSaveCurrent}><BookmarkIcon /></Btn>
-      <Btn title="推送到 GitHub（强制覆盖远程）" loading={pushLoading} onClick={onPush}><PushIcon /></Btn>
-      <Btn title="从 GitHub 拉取（对比差异后手动合并）" loading={pullLoading} onClick={onPull}><PullIcon /></Btn>
+      <Btn
+        title={syncDisabled ? `${pushTitle}（请先配置仓库连接）` : pushTitle}
+        loading={pushLoading}
+        disabled={syncDisabled}
+        onClick={onPush}
+      >
+        <PushIcon />
+      </Btn>
+      <Btn
+        title={syncDisabled ? `${pullTitle}（请先配置仓库连接）` : pullTitle}
+        loading={pullLoading}
+        disabled={syncDisabled}
+        onClick={onPull}
+      >
+        <PullIcon />
+      </Btn>
       <Btn title="设置" onClick={onOpenOptions}><SettingsIcon /></Btn>
     </div>
   )

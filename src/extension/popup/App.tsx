@@ -109,11 +109,15 @@ function AppShell() {
 
   // ---- 文件选择弹窗：推送 / 拉取前选择远程书签文件 ----
   const openFilePick = useCallback((mode: 'push' | 'pull') => {
+    if (!isConfigured) {
+      setSyncStatus('❌ 请先配置 GitHub Token、仓库 Owner 和名称')
+      return
+    }
     setSyncSteps(null)
     setFilePickMode(mode)
     setRemoteFiles(null)
     setRemoteFilesError(null)
-  }, [])
+  }, [isConfigured, setSyncStatus])
 
   useEffect(() => {
     if (!filePickMode) return
@@ -234,20 +238,19 @@ function AppShell() {
     return <LoadingView />
   }
 
-  if (!isConfigured) {
-    return <UnconfiguredView onOpenOptions={openOptions} />
-  }
-
   return (
     <div style={styles.container}>
       <Toolbar
         pushLoading={pushLoading}
         pullLoading={pullLoading}
+        syncDisabled={!isConfigured}
         onSaveCurrent={onStartSave}
         onPush={() => openFilePick('push')}
         onPull={() => openFilePick('pull')}
         onOpenOptions={openOptions}
       />
+
+      {!isConfigured && <UnconfiguredView onOpenOptions={openOptions} />}
 
       {isHomeView && <BookmarkStats stats={stats} />}
 

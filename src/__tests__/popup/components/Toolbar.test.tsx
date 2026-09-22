@@ -44,4 +44,20 @@ describe('Toolbar', () => {
     fireEvent.click(screen.getByTitle('推送到 GitHub（强制覆盖远程）'))
     expect(onPush).toHaveBeenCalledTimes(1)
   })
+
+  it('syncDisabled 时应禁用 push / pull，但保留保存与设置', () => {
+    const onPush = vi.fn()
+    const onPull = vi.fn()
+    renderWithTheme(<Toolbar {...defaultProps} syncDisabled onPush={onPush} onPull={onPull} />)
+
+    expect(screen.getByTitle(/推送到 GitHub/)).toBeDisabled()
+    expect(screen.getByTitle(/从 GitHub 拉取/)).toBeDisabled()
+    expect(screen.getByTitle('保存当前标签页到书签')).not.toBeDisabled()
+    expect(screen.getByTitle('设置')).not.toBeDisabled()
+
+    fireEvent.click(screen.getByTitle(/推送到 GitHub/))
+    fireEvent.click(screen.getByTitle(/从 GitHub 拉取/))
+    expect(onPush).not.toHaveBeenCalled()
+    expect(onPull).not.toHaveBeenCalled()
+  })
 })
