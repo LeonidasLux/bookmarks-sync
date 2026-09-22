@@ -42,10 +42,13 @@ export function ThemeProvider({
     [colors],
   )
 
-  // 同步 body 背景色（避免 HTML 中写死暗色背景）
+  // 同步 body 背景色与滚动条颜色（避免 HTML 中写死暗色）
   useEffect(() => {
     document.body.style.background = colors.bg
     document.body.style.color = colors.text
+    const root = document.documentElement
+    root.style.setProperty('--scrollbar-thumb', colors.scrollbar)
+    root.style.setProperty('--scrollbar-thumb-hover', colors.scrollbarHover)
     return () => {
       document.body.style.background = ''
       document.body.style.color = ''

@@ -22,7 +22,13 @@ const mockTree: chrome.bookmarks.BookmarkTreeNode[] = [
           { id: '13', title: '工具', children: [] },
         ],
       },
-      { id: '2', title: '其他书签', children: [] },
+      {
+        id: '2',
+        title: '其他书签',
+        children: [
+          { id: '21', title: '工作', children: [] },
+        ],
+      },
     ],
   },
 ]
@@ -41,10 +47,20 @@ describe('collectFolderCandidates', () => {
       '书签栏/开发',
       '书签栏/开发/前端',
       '书签栏/工具',
-      '其他书签',
+      '其他书签/工作',
     ])
     // 根节点自身不产生候选
     expect(candidates.every(c => c.path.length > 0)).toBe(true)
+  })
+
+  it('「其他书签」自身不作为推荐目标，但其子目录仍参与推荐', async () => {
+    const candidates = await collectFolderCandidates()
+
+    expect(candidates.some(c => c.id === '2')).toBe(false)
+    expect(candidates.some(c => c.path === '其他书签')).toBe(false)
+
+    const nested = candidates.find(c => c.id === '21')
+    expect(nested?.path).toBe('其他书签/工作')
   })
 
   it('应为每个目录收集书签样本与子目录名', async () => {

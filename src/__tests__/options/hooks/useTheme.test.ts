@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useBodyTheme, useResolvedTheme } from '../../../extension/options/hooks/useTheme'
+import { usePageTheme, useResolvedTheme } from '../../../extension/options/hooks/useTheme'
+import { palettes } from '../../../extension/options/palette'
 
 function mockMatchMedia(matches: boolean) {
   const listeners: Array<(e: MediaQueryListEvent) => void> = []
@@ -51,16 +52,25 @@ describe('useResolvedTheme', () => {
   })
 })
 
-describe('useBodyTheme', () => {
-  it('把背景与文字色同步到 body', () => {
-    renderHook(() => useBodyTheme('#0d1117', '#e6edf3'))
+describe('usePageTheme', () => {
+  it('把背景、文字色与滚动条颜色同步到页面', () => {
+    renderHook(() => usePageTheme(palettes.dark))
 
     const firstBackground = document.body.style.background
     expect(firstBackground).not.toBe('')
     expect(document.body.style.color).not.toBe('')
+    expect(document.documentElement.style.getPropertyValue('--scrollbar-thumb'))
+      .toBe(palettes.dark.scrollbar)
 
-    renderHook(() => useBodyTheme('#ffffff', '#1f2328'))
+    renderHook(() => usePageTheme(palettes.light))
+
     expect(document.body.style.background).not.toBe(firstBackground)
     expect(document.body.style.transition).toContain('background')
+    // 滚动条颜色跟随主题切换，避免亮色主题下出现发黑的滚动条
+    expect(document.documentElement.style.getPropertyValue('--scrollbar-thumb'))
+      .toBe(palettes.light.scrollbar)
+    expect(document.documentElement.style.getPropertyValue('--scrollbar-thumb-hover'))
+      .toBe(palettes.light.scrollbarHover)
+    expect(palettes.light.scrollbar).not.toBe(palettes.dark.scrollbar)
   })
 })

@@ -12,6 +12,8 @@ export const palettes = {
     accentGlow: 'rgba(61, 214, 200, 0.15)',
     green: '#3fb950',
     orange: '#d29922',
+    scrollbar: '#30363d',
+    scrollbarHover: '#484f58',
   },
   light: {
     bg: '#ffffff',
@@ -25,6 +27,8 @@ export const palettes = {
     accentGlow: 'rgba(13, 148, 136, 0.1)',
     green: '#1a7f37',
     orange: '#9a6700',
+    scrollbar: '#cdd5dd',
+    scrollbarHover: '#a9b3bd',
   },
 }
 

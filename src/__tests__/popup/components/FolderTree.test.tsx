@@ -96,17 +96,18 @@ describe('FolderTree', () => {
     })
   })
 
-  it('showPath 时展示完整路径', () => {
+  it('行内只展示目录名，完整路径放在 hover 提示里', () => {
     renderWithTheme(
       <FolderTree
         nodes={folderTree}
         expandedIds={new Set(['1', '11'])}
         onToggleExpand={vi.fn()}
-        showPath
       />,
     )
 
-    expect(screen.getByText('书签栏/技术/前端')).toBeInTheDocument()
+    // 不再渲染路径子行
+    expect(screen.queryByText('书签栏/技术/前端')).not.toBeInTheDocument()
+    expect(getRow('前端')).toHaveAttribute('title', '书签栏/技术/前端')
   })
 
   it('renderMeta 渲染行尾内容，选中行标记 aria-selected', () => {

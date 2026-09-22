@@ -1,7 +1,7 @@
 import { useConfigForm } from './hooks/useConfigForm'
 import { useCommands } from './hooks/useCommands'
 import { useRemoteFiles } from './hooks/useRemoteFiles'
-import { useBodyTheme, useResolvedTheme } from './hooks/useTheme'
+import { usePageTheme, useResolvedTheme } from './hooks/useTheme'
 import { palettes } from './palette'
 import { font } from './styles'
 import { AutoSyncSection } from './components/AutoSyncSection'
@@ -22,7 +22,7 @@ function App() {
   const mode = useResolvedTheme(config.theme)
   const colors = palettes[mode]
 
-  useBodyTheme(colors.bg, colors.text)
+  usePageTheme(colors)
 
   return (
     <div style={{

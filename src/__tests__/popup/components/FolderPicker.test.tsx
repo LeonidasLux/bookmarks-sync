@@ -77,6 +77,33 @@ describe('FolderPicker', () => {
     expect(screen.getByPlaceholderText('搜索目录...')).toBeInTheDocument()
   })
 
+  it('面板固定高度，目录树区域内部滚动，底部按钮不被顶出', async () => {
+    renderWithTheme(<FolderPicker initialTitle={INITIAL_TITLE} onSave={vi.fn()} onBack={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(getFolderItem('书签栏')).toBeTruthy()
+    })
+
+    // 面板按弹窗最大高度固定布局，自身不滚动
+    const panel = screen.getByTestId('folder-picker')
+    expect(panel.style.height).toBe('600px')
+    expect(panel.style.display).toBe('flex')
+    expect(panel.style.flexDirection).toBe('column')
+    expect(panel.style.overflow).toBe('hidden')
+
+    // 目录树占据剩余空间并在内部滚动
+    const listBox = screen.getByTestId('folder-list-box')
+    expect(listBox.style.flexGrow).toBe('1')
+    expect(listBox.style.minHeight).toBe('0px')
+    expect(listBox.style.overflowY).toBe('auto')
+
+    // 底部按钮固定在面板末尾，不参与压缩
+    const actions = screen.getByTestId('folder-picker-actions')
+    expect(actions.style.flexShrink).toBe('0')
+    expect(within(actions).getByText('保存')).toBeInTheDocument()
+    expect(within(actions).getByText('取消')).toBeInTheDocument()
+  })
+
   it('应可编辑书签标题', async () => {
     const onSave = vi.fn()
     const onBack = vi.fn()
@@ -139,6 +166,9 @@ describe('FolderPicker', () => {
 
     // 默认展开：父目录下的子目录直接可见，且层级更深
     expect(getFolderItem('前端')).toBeTruthy()
+    // 树节点只展示目录名，不展示路径子行
+    expect(screen.queryByText('书签栏/技术')).toBeNull()
+    expect(screen.queryByText('书签栏/技术/前端')).toBeNull()
     expect(parseInt(getTreeRow('前端').style.paddingLeft, 10))
       .toBeGreaterThan(parseInt(getTreeRow('技术').style.paddingLeft, 10))
 
@@ -367,7 +397,7 @@ describe('FolderPicker', () => {
     expect(onSave).toHaveBeenCalledWith('11', INITIAL_TITLE)
   })
 
-  it('应在建议下方按置信度由高到低列出前 5 个备选目录，可点击改选', async () => {
+  it('应在建议下方按置信度由高到低列出前 3 个备选目录（排除「其他书签」），可点击改选', async () => {
     const altTree: chrome.bookmarks.BookmarkTreeNode[] = [
       {
         id: '0',
@@ -385,6 +415,7 @@ describe('FolderPicker', () => {
               { id: '26', title: 'F', children: [] },
             ],
           },
+          { id: '2', title: '其他书签', children: [] },
         ],
       },
     ]
@@ -399,7 +430,7 @@ describe('FolderPicker', () => {
           folderId: '21',
           folderPath: '书签栏/A',
           confidence: 0.5,
-          probabilities: { '21': 0.5, '22': 0.3, '23': 0.1, '24': 0.05, '25': 0.03, '26': 0.02 },
+          probabilities: { '21': 0.4, '2': 0.25, '22': 0.15, '23': 0.1, '24': 0.05, '25': 0.03, '26': 0.02 },
           steps: [],
         },
       })
@@ -421,16 +452,15 @@ describe('FolderPicker', () => {
     })
 
     const alternatives = screen.getAllByTestId('folder-alternative')
-    // 只展示前 5 个，且按置信度降序
-    expect(alternatives).toHaveLength(5)
+    // 只展示前 3 个，且按置信度降序（「其他书签」即使概率更高也被过滤）
+    expect(alternatives).toHaveLength(3)
     expect(alternatives.map(el => el.textContent)).toEqual([
-      '1书签栏/A50%✓',
-      '2书签栏/B30%',
+      '1书签栏/A40%✓',
+      '2书签栏/B15%',
       '3书签栏/C10%',
-      '4书签栏/D5.0%',
-      '5书签栏/E3.0%',
     ])
-    expect(alternatives.some(el => el.textContent?.includes('书签栏/F'))).toBe(false)
+    expect(alternatives.some(el => el.textContent?.includes('其他书签'))).toBe(false)
+    expect(alternatives.some(el => el.textContent?.includes('书签栏/D'))).toBe(false)
 
     // 点击第 3 个备选后保存，应写入该目录
     await userEvent.click(alternatives[2])

@@ -2,8 +2,15 @@ import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useFolderPicker } from '../hooks/useFolderPicker'
 import { useFolderSuggestion } from '../hooks/useFolderSuggestion'
 import { collectFolderIds, useFolderTree } from '../hooks/useFolderTree'
+import { MAX_FOLDER_ALTERNATIVES } from '../constants'
+import { EXCLUDED_TARGET_FOLDER_IDS } from '../../../shared/jev'
 import { useTheme } from '../theme'
 import { FolderTree } from './FolderTree'
+
+/** 弹窗可选的最大高度（Chrome 扩展弹窗上限），保存面板按此固定高度布局 */
+const POPUP_PANEL_HEIGHT = 600
+/** 备选目录列表的最大高度，超过则内部滚动 */
+const MAX_ALTERNATIVES_HEIGHT = 96
 
 interface FolderPickerProps {
   initialTitle: string
@@ -67,17 +74,18 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
     setSelectedFolderId(folderId)
   }, [setSelectedFolderId])
 
-  /** Jev 概率分布中置信度最高的前 5 个目录，作为推荐备选 */
+  /** Jev 概率分布中置信度最高的前几个目录，作为推荐备选（排除「其他书签」等系统目录） */
   const alternatives = useMemo(() => {
     if (!suggestion) return []
     return Object.entries(suggestion.probabilities)
+      .filter(([id]) => !EXCLUDED_TARGET_FOLDER_IDS.has(id))
       .map(([id, probability]) => {
         const folder = allFolders.find(f => f.id === id)
         return folder ? { ...folder, probability } : null
       })
       .filter((item): item is { id: string; title: string; path: string; probability: number } => item !== null)
       .sort((a, b) => b.probability - a.probability)
-      .slice(0, 5)
+      .slice(0, MAX_FOLDER_ALTERNATIVES)
   }, [suggestion, allFolders])
 
   const handleSave = useCallback(() => {
@@ -95,15 +103,25 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
   }, [selectedFolderId, title, handleSave, onBack])
 
   return (
-    <div style={{
-      width: 420,
-      padding: '12px',
-      fontFamily: fonts.ui,
-      background: colors.bg,
-      color: colors.text,
-      fontSize: '12px',
-      lineHeight: 1.6,
-    }} onKeyDown={handleKeyDown}>
+    <div
+      data-testid="folder-picker"
+      style={{
+        width: 420,
+        // 弹窗最大高度 600px：整体固定高度 + 弹性布局，避免底部按钮被顶出可视区
+        height: POPUP_PANEL_HEIGHT,
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        padding: '12px',
+        fontFamily: fonts.ui,
+        background: colors.bg,
+        color: colors.text,
+        fontSize: '12px',
+        lineHeight: 1.6,
+      }}
+      onKeyDown={handleKeyDown}
+    >
       {/* 顶部导航栏 */}
       <div style={{
         display: 'flex',
@@ -112,6 +130,7 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
         marginBottom: '12px',
         paddingBottom: '8px',
         borderBottom: `1px solid ${colors.borderLight}`,
+        flexShrink: 0,
       }}>
         <button
           onClick={onBack}
@@ -154,6 +173,7 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
         letterSpacing: '0.5px',
         marginBottom: '4px',
         fontFamily: fonts.mono,
+        flexShrink: 0,
       }}>
         书签标题
       </div>
@@ -174,6 +194,7 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
           outline: 'none',
           transition: 'border-color 0.15s, box-shadow 0.15s',
           marginBottom: '10px',
+          flexShrink: 0,
           width: '100%',
           boxSizing: 'border-box' as const,
           ...(titleFocus ? inputFocusBorder : inputBorderStyle),
@@ -194,6 +215,7 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
           marginBottom: '6px',
           color: suggestionState === 'error' ? colors.red : colors.textDim,
           lineHeight: 1.5,
+          flexShrink: 0,
         }}>
           {suggestionState === 'loading' && (
             <span><span style={{ color: colors.accent }}>⟳</span> Jev 正在推荐目标目录...</span>
@@ -218,7 +240,7 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
 
       {/* Jev 备选目录：按置信度由高到低 */}
       {alternatives.length > 0 && (
-        <div style={{ marginBottom: '10px' }}>
+        <div style={{ marginBottom: '10px', flexShrink: 0 }}>
           <div style={{
             fontSize: '10px',
             fontWeight: 600,
@@ -234,7 +256,8 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
             border: `1px solid ${colors.border}`,
             borderRadius: '6px',
             background: colors.surface,
-            overflow: 'hidden' as const,
+            maxHeight: MAX_ALTERNATIVES_HEIGHT,
+            overflowY: 'auto' as const,
           }}>
             {alternatives.map((alt, index) => (
               <div
@@ -293,6 +316,7 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
         letterSpacing: '0.5px',
         marginBottom: '4px',
         fontFamily: fonts.mono,
+        flexShrink: 0,
       }}>
         <span>手动选择</span>
         {!searching && folderTree.length > 0 && (
@@ -327,6 +351,7 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
           outline: 'none',
           transition: 'border-color 0.15s, box-shadow 0.15s',
           marginBottom: '8px',
+          flexShrink: 0,
           width: '100%',
           boxSizing: 'border-box' as const,
           background: colors.bg,
@@ -336,15 +361,21 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
       />
 
       {/* 文件夹列表 */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto' as const,
-        maxHeight: 260,
-        border: `1px solid ${colors.border}`,
-        borderRadius: '6px',
-        background: colors.surface,
-        marginBottom: '10px',
-      }}>
+      <div
+        data-testid="folder-list-box"
+        style={{
+          // 目录树占据剩余空间并在内部滚动，保证底部按钮始终可见
+          flexGrow: 1,
+          flexShrink: 1,
+          flexBasis: 'auto',
+          minHeight: 0,
+          overflowY: 'auto' as const,
+          border: `1px solid ${colors.border}`,
+          borderRadius: '6px',
+          background: colors.surface,
+          marginBottom: '10px',
+        }}
+      >
         {loading ? (
           <div style={{
             textAlign: 'center' as const,
@@ -373,7 +404,6 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
               onToggleExpand={toggleExpand}
               onSelect={node => selectFolder(node.id)}
               selectedId={selectedFolderId}
-              showPath
               itemIdPrefix="folder-item-"
               renderMeta={node => (
                 <>
@@ -398,11 +428,17 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
       </div>
 
       {/* 操作按钮 */}
-      <div style={{
-        display: 'flex',
-        gap: '8px',
-        justifyContent: 'flex-end' as const,
-      }}>
+      <div
+        data-testid="folder-picker-actions"
+        style={{
+          display: 'flex',
+          gap: '8px',
+          justifyContent: 'flex-end' as const,
+          flexShrink: 0,
+          paddingTop: '8px',
+          borderTop: `1px solid ${colors.borderLight}`,
+        }}
+      >
         <button
           onClick={onBack}
           style={styles.btnSecondary}

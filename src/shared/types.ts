@@ -64,6 +64,9 @@ export interface PullDiffResult {
   steps?: string[]
 }
 
+/** 定时同步的默认间隔（分钟）：6 小时 */
+export const DEFAULT_AUTO_SYNC_INTERVAL = 360
+
 export const DEFAULT_CONFIG: AppConfig = {
   githubToken: '',
   repoOwner: '',

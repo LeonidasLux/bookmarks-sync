@@ -13,11 +13,16 @@
         overflow-x: hidden;
         transition: background 0.2s, color 0.2s;
       }
-      /* 滚动条暗色主题 */
+      /* 滚动条：颜色由 ThemeProvider 按亮 / 暗主题注入（默认值偏暗色主题） */
       ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+      ::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb, #30363d);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover, #484f58);
+      }
       /* 输入框 focus 样式 */
       input:focus { outline: none; }
     </style>

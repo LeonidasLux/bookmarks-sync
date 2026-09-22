@@ -1,4 +1,4 @@
-import type { AppConfig } from '../../../shared/types'
+import { DEFAULT_AUTO_SYNC_INTERVAL, type AppConfig } from '../../../shared/types'
 import type { Palette } from '../palette'
 import type { UpdateField } from '../types'
 import { font } from '../styles'
@@ -11,6 +11,13 @@ interface AutoSyncSectionProps {
   colors: Palette
 }
 
+/** 解析间隔输入：留空 / 非法时回落到默认间隔，其余至少 1 分钟 */
+function parseInterval(value: string): number {
+  const minutes = Number(value)
+  if (!value.trim() || Number.isNaN(minutes)) return DEFAULT_AUTO_SYNC_INTERVAL
+  return Math.max(1, Math.floor(minutes))
+}
+
 /** 定时同步配置 */
 export function AutoSyncSection({ config, updateField, colors }: AutoSyncSectionProps) {
   const enabled = config.autoSyncInterval > 0
@@ -21,7 +28,7 @@ export function AutoSyncSection({ config, updateField, colors }: AutoSyncSection
         <input
           type="checkbox"
           checked={enabled}
-          onChange={(e) => updateField('autoSyncInterval', e.target.checked ? 30 : 0)}
+          onChange={(e) => updateField('autoSyncInterval', e.target.checked ? DEFAULT_AUTO_SYNC_INTERVAL : 0)}
           style={{ accentColor: colors.accent }}
         />
         <span style={{ fontWeight: 500 }}>启用定时同步</span>
@@ -33,7 +40,7 @@ export function AutoSyncSection({ config, updateField, colors }: AutoSyncSection
           <TextInput
             type="number"
             value={String(config.autoSyncInterval)}
-            onChange={(v) => updateField('autoSyncInterval', Math.max(1, Math.floor(Number(v) || 1)))}
+            onChange={(v) => updateField('autoSyncInterval', parseInterval(v))}
             colors={colors}
             ariaLabel="同步间隔（分钟）"
             style={{ width: 96 }}

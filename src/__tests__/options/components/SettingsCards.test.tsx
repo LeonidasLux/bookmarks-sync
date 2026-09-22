@@ -7,7 +7,7 @@ import { AutoSyncSection } from '../../../extension/options/components/AutoSyncS
 import { ShortcutsSection } from '../../../extension/options/components/ShortcutsSection'
 import { SaveBar } from '../../../extension/options/components/SaveBar'
 import { palettes } from '../../../extension/options/palette'
-import { DEFAULT_CONFIG } from '../../../shared/types'
+import { DEFAULT_AUTO_SYNC_INTERVAL, DEFAULT_CONFIG } from '../../../shared/types'
 import type { UpdateField } from '../../../extension/options/types'
 
 const colors = palettes.dark
@@ -67,14 +67,15 @@ describe('AutoSyncSection', () => {
     expect(screen.queryByLabelText('同步间隔（分钟）')).toBeNull()
   })
 
-  it('勾选后写入默认间隔 30 分钟', () => {
+  it('勾选后写入默认间隔 360 分钟', () => {
     const updateField = vi.fn() as unknown as UpdateField
     render(
       <AutoSyncSection config={{ ...DEFAULT_CONFIG, autoSyncInterval: 0 }} updateField={updateField} colors={colors} />,
     )
 
     fireEvent.click(screen.getByRole('checkbox'))
-    expect(updateField).toHaveBeenCalledWith('autoSyncInterval', 30)
+    expect(updateField).toHaveBeenCalledWith('autoSyncInterval', DEFAULT_AUTO_SYNC_INTERVAL)
+    expect(DEFAULT_AUTO_SYNC_INTERVAL).toBe(360)
   })
 
   it('启用后展示间隔输入并写回数值', () => {
@@ -98,6 +99,16 @@ describe('AutoSyncSection', () => {
 
     fireEvent.change(screen.getByLabelText('同步间隔（分钟）'), { target: { value: '0' } })
     expect(updateField).toHaveBeenCalledWith('autoSyncInterval', 1)
+  })
+
+  it('清空间隔输入时回落到默认间隔 360 分钟', () => {
+    const updateField = vi.fn() as unknown as UpdateField
+    render(
+      <AutoSyncSection config={{ ...DEFAULT_CONFIG, autoSyncInterval: 360 }} updateField={updateField} colors={colors} />,
+    )
+
+    fireEvent.change(screen.getByLabelText('同步间隔（分钟）'), { target: { value: '' } })
+    expect(updateField).toHaveBeenCalledWith('autoSyncInterval', DEFAULT_AUTO_SYNC_INTERVAL)
   })
 })
 

@@ -8,6 +8,7 @@ export interface ColorScheme {
   accent: string; accentDim: string; accentGlow: string
   green: string; red: string; orange: string
   blue: string; purple: string
+  scrollbar: string; scrollbarHover: string
 }
 
 // ─── 暗色主题 ──────────────────────────────────────────────
@@ -28,6 +29,8 @@ export const darkColors: ColorScheme = {
   orange: '#d29922',
   blue: '#58a6ff',
   purple: '#bc8cff',
+  scrollbar: '#30363d',
+  scrollbarHover: '#484f58',
 }
 
 // ─── 亮色主题 ──────────────────────────────────────────────
@@ -48,6 +51,8 @@ export const lightColors: ColorScheme = {
   orange: '#9a6700',
   blue: '#0969da',
   purple: '#8250df',
+  scrollbar: '#cdd5dd',
+  scrollbarHover: '#a9b3bd',
 }
 
 export const fonts = {

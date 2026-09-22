@@ -31,6 +31,12 @@ const MAX_SAMPLES = 4
 /** 示例书签 / 子目录名称的最大长度 */
 const MAX_HINT_LENGTH = 60
 
+/**
+ * 不作为 Jev 推荐目标的根级目录 id。
+ * '2' = 其他书签（Chrome 固定的系统目录），避免推荐把书签保存到这里。
+ */
+export const EXCLUDED_TARGET_FOLDER_IDS: ReadonlySet<string> = new Set(['2'])
+
 /** 参与 Jev 选择的书签目录候选 */
 export interface FolderCandidate {
   /** 浏览器书签文件夹 id */

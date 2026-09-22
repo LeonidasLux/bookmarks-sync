@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AppConfig } from '../../../shared/types'
+import type { Palette } from '../palette'
 
 export type ResolvedTheme = 'dark' | 'light'
 
@@ -23,12 +24,19 @@ export function useResolvedTheme(theme: AppConfig['theme'] | undefined): Resolve
 }
 
 /**
- * 把当前调色板同步到 body，保证页面留白区域与设置页主题一致。
+ * 把当前调色板同步到 body 与滚动条变量，
+ * 保证页面留白区域、滚动条颜色与设置页主题一致。
  */
-export function useBodyTheme(bg: string, text: string) {
+export function usePageTheme(colors: Pick<Palette, 'bg' | 'text' | 'scrollbar' | 'scrollbarHover'>) {
+  const { bg, text, scrollbar, scrollbarHover } = colors
+
   useEffect(() => {
     document.body.style.background = bg
     document.body.style.color = text
     document.body.style.transition = 'background 0.2s, color 0.2s'
-  }, [bg, text])
+
+    const root = document.documentElement
+    root.style.setProperty('--scrollbar-thumb', scrollbar)
+    root.style.setProperty('--scrollbar-thumb-hover', scrollbarHover)
+  }, [bg, text, scrollbar, scrollbarHover])
 }

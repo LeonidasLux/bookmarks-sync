@@ -12,8 +12,6 @@ export interface FolderTreeProps {
   onSelect?: (node: FolderTreeNode) => void
   /** 当前选中项，选中行高亮显示 */
   selectedId?: string
-  /** 在标题下方显示完整路径 */
-  showPath?: boolean
   /** 行尾自定义内容，如选中 / 推荐标记 */
   renderMeta?: (node: FolderTreeNode) => ReactNode
   /** 行元素 id 前缀，便于 scrollIntoView 定位 */
@@ -29,7 +27,6 @@ interface TreeRowProps {
   indentSize: number
   expanded: boolean
   selected: boolean
-  showPath: boolean
   onToggleExpand: (id: string) => void
   onSelect?: (node: FolderTreeNode) => void
   renderMeta?: (node: FolderTreeNode) => ReactNode
@@ -42,7 +39,6 @@ function TreeRow({
   indentSize,
   expanded,
   selected,
-  showPath,
   onToggleExpand,
   onSelect,
   renderMeta,
@@ -63,7 +59,8 @@ function TreeRow({
       onClick={() => onSelect?.(node)}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      title={showPath ? node.path : node.title}
+      // 只展示目录名，完整路径放在 hover 提示里
+      title={node.path}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -118,22 +115,6 @@ function TreeRow({
         >
           {node.title}
         </span>
-        {showPath && (
-          <span
-            style={{
-              display: 'block',
-              marginTop: '1px',
-              fontSize: '10px',
-              fontFamily: fonts.mono,
-              color: colors.textDim,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {node.path}
-          </span>
-        )}
       </div>
 
       {renderMeta?.(node)}
@@ -150,7 +131,6 @@ export function FolderTree({
   onToggleExpand,
   onSelect,
   selectedId,
-  showPath = false,
   renderMeta,
   itemIdPrefix,
   indentSize = 14,
@@ -167,7 +147,6 @@ export function FolderTree({
             indentSize={indentSize}
             expanded={expanded}
             selected={node.id === selectedId}
-            showPath={showPath}
             onToggleExpand={onToggleExpand}
             onSelect={onSelect}
             renderMeta={renderMeta}
