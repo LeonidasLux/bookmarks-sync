@@ -37,8 +37,10 @@ export function useFolderPicker() {
       .then(async ([root]) => {
         const folders = await flattenFolders(root.children ?? [], '')
         setAllFolders(folders)
+        // 仅在用户/推荐尚未选定目录时使用首个目录兜底，
+        // 避免异步加载覆盖 Jev 推荐或用户的手动选择
         if (folders.length > 0) {
-          setSelectedFolderId(folders[0].id)
+          setSelectedFolderId(prev => prev || folders[0].id)
         }
       })
       .catch(() => {

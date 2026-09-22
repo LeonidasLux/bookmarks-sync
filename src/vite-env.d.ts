@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_PULL_FILE_NAME?: string
   readonly VITE_CLEAN_EMPTY_FOLDERS?: string
   readonly VITE_AUTO_SYNC_INTERVAL?: string
+  /** TypeSafe Jev API Key（本地开发用；由 vite.config.ts 从 TYPESAFE_API_KEY 注入） */
+  readonly VITE_TYPESAFE_API_KEY?: string
 }
 
 interface ImportMeta {

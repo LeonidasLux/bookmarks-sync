@@ -67,7 +67,7 @@ async function enrichVisitCounts(bookmarks: Bookmark[], steps: string[]): Promis
  * 不同浏览器根文件夹名称不同（Chrome: 书签栏, Edge: 收藏夹栏），
  * 用此映射统一为 Chrome 中文名，保证 bookmarks.json 路径跨浏览器一致。
  */
-const ROOT_FOLDER_CANONICAL: Record<string, string> = {
+export const ROOT_FOLDER_CANONICAL: Record<string, string> = {
   '1': '书签栏',
   '2': '其他书签',
   '3': '移动设备书签',

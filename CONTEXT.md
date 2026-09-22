@@ -40,6 +40,10 @@ _Avoid_: 默认路径
 用户在扩展弹窗中点击推送/拉取按钮，选择远程书签文件后手动触发的同步。
 _Avoid_: 刷新
 
+**Folder Suggestion**:
+保存书签时由 TypeSafe Jev 模型根据页面标题与链接，在本地**全部**已有目录中选出并推荐的保存目录（目录数 ≤ 255 时一次 Choice，超过则等分分块并行提问后按概率合并）；同时给出置信度与置信度最高的前 5 个备选目录。它仅作为预选项，用户可在保存前手动改选，未配置 API Key 或调用失败时退回手动选择。
+_Avoid_: 自动归档、智能分类
+
 ## Project Structure
 
 ```
@@ -48,11 +52,12 @@ bookmarks-sync/
 │   ├── extension/
 │   │   ├── popup/          # 弹窗 UI：书签浏览、文件选择、推送/拉取
 │   │   ├── options/        # 设置页：GitHub 配置、默认文件设置
-│   │   ├── background/     # Service Worker：消息路由 + GitHub API
+│   │   ├── background/     # Service Worker：消息路由 + GitHub API + Jev 目录推荐
 │   │   └── manifest.json
 │   └── shared/
 │       ├── types.ts        # Bookmark / AppConfig 类型定义
-│       └── sync.ts         # SyncEngine：多书签文件同步核心
+│       ├── sync.ts         # SyncEngine：多书签文件同步核心
+│       └── jev.ts          # TypeSafe Jev：目录推荐（Choice + 分层选择）
 ├── vite.config.ts
 ├── package.json
 └── tsconfig.json

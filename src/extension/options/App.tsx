@@ -22,6 +22,7 @@ function App() {
   )
   const [focusField, setFocusField] = useState<string | null>(null)
   const [showToken, setShowToken] = useState(false)
+  const [showTypesafeKey, setShowTypesafeKey] = useState(false)
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
   )
@@ -212,6 +213,60 @@ function App() {
             </a>
           </p>
         )}
+      </div>
+
+      {/* TypeSafe Jev：保存书签时自动推荐目标目录 */}
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '12px', fontWeight: 500, color: colors.textMuted }}>
+          <span style={{ color: colors.accent }}>$</span> TYPESAFE_API_KEY <span style={{ color: colors.textDim }}>(可选)</span>
+        </label>
+        <div style={{ position: 'relative' }}>
+          <input
+            type={showTypesafeKey ? 'text' : 'password'}
+            value={config?.typesafeApiKey ?? ''}
+            onChange={(e) => updateField('typesafeApiKey', e.target.value)}
+            onFocus={() => setFocusField('typesafe')}
+            onBlur={() => setFocusField(null)}
+            style={{
+              ...inputBase,
+              paddingRight: 40,
+              ...(focusField === 'typesafe' ? themedFocus : {}),
+            }}
+            placeholder="ts_..."
+          />
+          <button
+            type="button"
+            onClick={() => setShowTypesafeKey(prev => !prev)}
+            onFocus={() => setFocusField('typesafe')}
+            onBlur={() => setFocusField(null)}
+            style={{
+              position: 'absolute',
+              right: 4,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px 6px',
+              color: colors.textMuted,
+              fontSize: '14px',
+              lineHeight: 1,
+            }}
+            title={showTypesafeKey ? '隐藏 Key' : '显示 Key'}
+          >
+            {showTypesafeKey ? '🙈' : '👁️'}
+          </button>
+        </div>
+        <p style={{ fontSize: '11px', color: colors.textDim, margin: '0.25rem 0 0 0', fontFamily: font }}>
+          # 配置后，保存书签时由{' '}
+          <a
+            href="https://docs.typesafe.ai/primitives/choice"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: colors.accent, textDecoration: 'none' }}
+          >TypeSafe Jev</a>{' '}
+          模型推荐目标目录（仍可在保存前手动改选）；留空则关闭该功能
+        </p>
       </div>
 
       <FileDefaultPicker

@@ -6,6 +6,7 @@ import { AUTO_SYNC_ALARM, scheduleAutoSync } from './auto-sync'
 import { getBrowserBookmarks } from './bookmark-utils'
 import { computeEmptyFolders } from './folder-utils'
 import { applyDiffsToBrowser, reorderBookmarks, showResult } from './diff-applier'
+import { suggestSaveFolder } from './folder-suggest'
 
 const REMOTE_BOOKMARKS_KEY = 'lastRemoteBookmarks'
 
@@ -231,6 +232,33 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         sendResponse({ config: applyDevEnv({ ...DEFAULT_CONFIG, ...(result.config ?? {}) } as AppConfig) })
       })
       return true
+
+    case 'SUGGEST_SAVE_FOLDER': {
+      ;(async () => {
+        try {
+          const stored = await chrome.storage.local.get('config')
+          const cfg = applyDevEnv({ ...DEFAULT_CONFIG, ...(stored.config ?? {}) } as AppConfig)
+          const apiKey = cfg.typesafeApiKey?.trim()
+          if (!apiKey) {
+            sendResponse({ success: false, skipped: true, error: '未配置 Jev API Key' })
+            return
+          }
+
+          const suggestion = await suggestSaveFolder(apiKey, {
+            title: (msg.title as string) ?? '',
+            url: (msg.url as string) ?? '',
+          })
+          if (!suggestion) {
+            sendResponse({ success: false, error: '没有可用的书签目录' })
+            return
+          }
+          sendResponse({ success: true, suggestion })
+        } catch (e) {
+          sendResponse({ success: false, error: (e as Error).message })
+        }
+      })()
+      return true
+    }
 
     case 'SAVE_CONFIG':
       config = msg.config as AppConfig

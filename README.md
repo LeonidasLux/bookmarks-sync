@@ -51,6 +51,7 @@
 | 🗑 **空文件夹清理** | 同步后自动删除变空的文件夹（可关闭） |
 | ⚙️ **默认文件配置** | 推送 / 拉取默认文件可在设置中预设（远程下拉 + 新建） |
 | 📌 **快捷保存** | 弹窗中一键将当前页面保存到书签 |
+| 🤖 **智能目录推荐** | 保存书签时由 [TypeSafe Jev](https://docs.typesafe.ai/primitives/choice) 推荐目标目录并预选，保存前可手动改选（需在设置中配置 TypeSafe API Key） |
 
 ---
 
@@ -129,8 +130,11 @@
 | **同步默认文件** | 推送时默认写入的远程书签文件（可下拉选择远程文件或新建） | `bookmarks-chrome.json` |
 | **拉取默认文件** | 拉取时默认读取的远程书签文件 | `bookmarks-chrome.json` |
 | **自动清理空文件夹** | 应用差异后删除变空的文件夹 | 开/关 |
+| **TypeSafe API Key** | 可选；配置后保存书签时用 Jev 推荐目标目录 | `ts_xxxxxxxxxx` |
 
 > **文件命名规则**：远程书签文件统一为 `bookmarks-[name].json`，`name` 仅限英文（字母开头，可含数字 / 中划线 / 下划线，最长 50 字符）。旧版 `bookmarks.json` 仍受支持，可在文件列表中正常选择。
+
+> **智能目录推荐**：打开「保存书签」面板时，扩展会把当前页面标题 / 链接与本地书签目录（含目录内书签样本、子目录名）提交给 Jev，由模型在**全部目录**上选出最合适的目录并预选——目录不超过 255 个时一次 Choice 覆盖全部候选，超过上限时等分分块并行提问（同一请求内的多个问题），任何目录都不会被提前淘汰。建议行下方会按置信度由高到低列出前 5 个备选目录（来自模型返回的概率分布），点击即可改选；下方「手动选择」区仍是完整的目录列表与搜索。Key 未配置或调用失败时自动退回原有的手动选择流程。
 
 ---
 
@@ -287,6 +291,17 @@ cp .env.example .env
 然后按需填写 `VITE_GITHUB_TOKEN`、`VITE_REPO_OWNER`、`VITE_REPO_NAME` 等变量（完整列表见 `.env.example`）。
 
 这些值**仅本地开发（`pnpm dev`）生效**，优先级高于已保存的扩展配置，方便调试；不会被写入正式构建产物，`.env` 已被 `.gitignore` 忽略。
+
+本地调试智能目录推荐时，可直接复用 shell 中已导出的 TypeSafe Key（无需写进 `.env`）：
+
+```bash
+# ~/.zshrc
+export TYPESAFE_API_KEY=ts_xxxxxxxxxx
+
+pnpm dev   # development 模式下自动注入为 VITE_TYPESAFE_API_KEY
+```
+
+`TYPESAFE_API_KEY` 仅在 `development` 模式注入，测试与正式构建都不会带上该值（可用 `grep -r "$TYPESAFE_API_KEY" dist/` 自检）。
 
 ### 构建
 

@@ -26,6 +26,8 @@ export interface AppConfig {
   pullFileName: string
   /** 定时同步间隔（分钟），0 表示禁用 */
   autoSyncInterval: number
+  /** TypeSafe Jev API Key，用于保存书签时自动选择目标目录，空表示不启用 */
+  typesafeApiKey: string
 }
 
 export interface SyncResult {
@@ -71,4 +73,5 @@ export const DEFAULT_CONFIG: AppConfig = {
   syncFileName: '',
   pullFileName: '',
   autoSyncInterval: 0,
+  typesafeApiKey: '',
 }

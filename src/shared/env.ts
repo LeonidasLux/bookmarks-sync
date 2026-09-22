@@ -20,6 +20,8 @@ export function devEnvConfig(): Partial<AppConfig> {
   const pullFileName = nonEmpty(env.VITE_PULL_FILE_NAME)
   const cleanEmptyFolders = nonEmpty(env.VITE_CLEAN_EMPTY_FOLDERS)
   const autoSyncInterval = nonEmpty(env.VITE_AUTO_SYNC_INTERVAL)
+  // define 只替换字面量成员表达式，这里保持 import.meta.env.X 的直写形式
+  const typesafeApiKey = nonEmpty(import.meta.env.VITE_TYPESAFE_API_KEY ?? env.VITE_TYPESAFE_API_KEY)
 
   if (githubToken) config.githubToken = githubToken
   if (repoOwner) config.repoOwner = repoOwner
@@ -27,6 +29,7 @@ export function devEnvConfig(): Partial<AppConfig> {
   if (syncFileName) config.syncFileName = syncFileName
   if (pullFileName) config.pullFileName = pullFileName
   if (cleanEmptyFolders) config.cleanEmptyFolders = cleanEmptyFolders === 'true'
+  if (typesafeApiKey) config.typesafeApiKey = typesafeApiKey
   if (autoSyncInterval) {
     const minutes = Number(autoSyncInterval)
     if (!Number.isNaN(minutes)) config.autoSyncInterval = minutes

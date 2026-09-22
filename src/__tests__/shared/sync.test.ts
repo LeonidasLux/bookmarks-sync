@@ -18,6 +18,7 @@ const TEST_CONFIG: AppConfig = {
   syncFileName: '',
   pullFileName: '',
   autoSyncInterval: 0,
+  typesafeApiKey: '',
 }
 
 function mockFetchResponse(status: number, body: unknown) {

@@ -1,16 +1,20 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useFolderPicker } from '../hooks/useFolderPicker'
+import { useFolderSuggestion } from '../hooks/useFolderSuggestion'
 import { useTheme } from '../theme'
 
 interface FolderPickerProps {
   initialTitle: string
+  /** 待保存页面的 URL，用于 Jev 目录推荐 */
+  pageUrl?: string
   onSave: (folderId: string, title: string) => void
   onBack: () => void
 }
 
-export function FolderPicker({ initialTitle, onSave, onBack }: FolderPickerProps) {
+export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: FolderPickerProps) {
   const { styles, colors, fonts } = useTheme()
   const {
+    allFolders,
     filteredFolders,
     loading,
     searchQuery,
@@ -18,11 +22,15 @@ export function FolderPicker({ initialTitle, onSave, onBack }: FolderPickerProps
     selectedFolderId,
     setSelectedFolderId,
   } = useFolderPicker()
+  // 页面标题固定使用打开时的标题，避免编辑书签标题时反复触发推荐
+  const { state: suggestionState, suggestion, error: suggestionError } = useFolderSuggestion(initialTitle, pageUrl)
 
   const [title, setTitle] = useState(initialTitle)
   const [titleFocus, setTitleFocus] = useState(false)
   const [searchFocus, setSearchFocus] = useState(false)
   const [hoverItem, setHoverItem] = useState<string | null>(null)
+  /** 用户手动点选目录后，不再被 AI 推荐覆盖 */
+  const userPickedRef = useRef(false)
 
   const inputBorderStyle = { border: `1px solid ${colors.border}` } as React.CSSProperties
   const inputFocusBorder = { border: `1px solid ${colors.accent}` } as React.CSSProperties
@@ -33,6 +41,33 @@ export function FolderPicker({ initialTitle, onSave, onBack }: FolderPickerProps
     titleInputRef.current?.focus()
     titleInputRef.current?.select()
   }, [])
+
+  // Jev 推荐返回后预选该目录，用户仍可手动改选
+  useEffect(() => {
+    if (!suggestion || userPickedRef.current) return
+    setSelectedFolderId(suggestion.folderId)
+    requestAnimationFrame(() => {
+      document.getElementById(`folder-item-${suggestion.folderId}`)?.scrollIntoView?.({ block: 'nearest' })
+    })
+  }, [suggestion, setSelectedFolderId])
+
+  const selectFolder = useCallback((folderId: string) => {
+    userPickedRef.current = true
+    setSelectedFolderId(folderId)
+  }, [setSelectedFolderId])
+
+  /** Jev 概率分布中置信度最高的前 5 个目录，作为推荐备选 */
+  const alternatives = useMemo(() => {
+    if (!suggestion) return []
+    return Object.entries(suggestion.probabilities)
+      .map(([id, probability]) => {
+        const folder = allFolders.find(f => f.id === id)
+        return folder ? { ...folder, probability } : null
+      })
+      .filter((item): item is { id: string; title: string; path: string; probability: number } => item !== null)
+      .sort((a, b) => b.probability - a.probability)
+      .slice(0, 5)
+  }, [suggestion, allFolders])
 
   const handleSave = useCallback(() => {
     if (selectedFolderId && title.trim()) {
@@ -140,7 +175,102 @@ export function FolderPicker({ initialTitle, onSave, onBack }: FolderPickerProps
         }}
       />
 
-      {/* 搜索框 */}
+      {/* Jev 目录推荐状态 */}
+      {suggestionState !== 'idle' && (
+        <div style={{
+          fontSize: '11px',
+          fontFamily: fonts.mono,
+          marginBottom: '6px',
+          color: suggestionState === 'error' ? colors.red : colors.textDim,
+          lineHeight: 1.5,
+        }}>
+          {suggestionState === 'loading' && (
+            <span><span style={{ color: colors.accent }}>⟳</span> Jev 正在推荐目标目录...</span>
+          )}
+          {suggestionState === 'ready' && suggestion && (
+            <span>
+              <span style={{ color: colors.accent }}>🤖</span> Jev 建议：{suggestion.folderPath}
+              <span style={{ color: colors.textMuted }}>
+                （置信度 {(suggestion.confidence * 100).toFixed(0)}%）
+              </span>
+              <span> · {suggestion.confidence < 0.4 ? '置信度较低，请确认' : '可手动改选'}</span>
+            </span>
+          )}
+          {suggestionState === 'skipped' && (
+            <span>未配置 Jev API Key，已跳过智能目录推荐</span>
+          )}
+          {suggestionState === 'error' && (
+            <span>Jev 推荐失败：{suggestionError}</span>
+          )}
+        </div>
+      )}
+
+      {/* Jev 备选目录：按置信度由高到低 */}
+      {alternatives.length > 0 && (
+        <div style={{ marginBottom: '10px' }}>
+          <div style={{
+            fontSize: '10px',
+            fontWeight: 600,
+            color: colors.textDim,
+            textTransform: 'uppercase' as const,
+            letterSpacing: '0.5px',
+            marginBottom: '4px',
+            fontFamily: fonts.mono,
+          }}>
+            备选目录（置信度由高到低）
+          </div>
+          <div style={{
+            border: `1px solid ${colors.border}`,
+            borderRadius: '6px',
+            background: colors.surface,
+            overflow: 'hidden' as const,
+          }}>
+            {alternatives.map((alt, index) => (
+              <div
+                key={alt.id}
+                data-testid="folder-alternative"
+                onClick={() => selectFolder(alt.id)}
+                onMouseEnter={() => setHoverItem(alt.id)}
+                onMouseLeave={() => setHoverItem(null)}
+                title={alt.path}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '5px 8px',
+                  cursor: 'pointer',
+                  fontFamily: fonts.mono,
+                  fontSize: '11px',
+                  transition: 'background 0.1s',
+                  ...(index > 0 ? { borderTop: `1px solid ${colors.borderLight}` } : {}),
+                  ...(alt.id === selectedFolderId ? { background: `${colors.accent}12` } : {}),
+                  ...(hoverItem === alt.id && alt.id !== selectedFolderId ? { background: `${colors.accent}08` } : {}),
+                }}
+              >
+                <span style={{ color: colors.textDim, width: 12, flexShrink: 0 }}>{index + 1}</span>
+                <span style={{
+                  flex: 1,
+                  minWidth: 0,
+                  color: alt.id === suggestion?.folderId ? colors.accent : colors.text,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap' as const,
+                }}>
+                  {alt.path}
+                </span>
+                <span style={{ color: colors.textMuted, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {(alt.probability * 100).toFixed(alt.probability >= 0.1 ? 0 : 1)}%
+                </span>
+                {alt.id === selectedFolderId && (
+                  <span style={{ color: colors.accent, fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>✓</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 手动选择目录 */}
       <div style={{
         fontSize: '10px',
         fontWeight: 600,
@@ -150,7 +280,7 @@ export function FolderPicker({ initialTitle, onSave, onBack }: FolderPickerProps
         marginBottom: '4px',
         fontFamily: fonts.mono,
       }}>
-        目标目录
+        手动选择
       </div>
       <input
         ref={searchInputRef}
@@ -210,6 +340,7 @@ export function FolderPicker({ initialTitle, onSave, onBack }: FolderPickerProps
           filteredFolders.map(f => (
             <div
               key={f.id}
+              id={`folder-item-${f.id}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -224,7 +355,7 @@ export function FolderPicker({ initialTitle, onSave, onBack }: FolderPickerProps
                 } : {}),
                 ...(hoverItem === f.id && f.id !== selectedFolderId ? { background: `${colors.accent}08` } : {}),
               }}
-              onClick={() => setSelectedFolderId(f.id)}
+              onClick={() => selectFolder(f.id)}
               onMouseEnter={() => setHoverItem(f.id)}
               onMouseLeave={() => setHoverItem(null)}
             >
@@ -258,6 +389,11 @@ export function FolderPicker({ initialTitle, onSave, onBack }: FolderPickerProps
               {f.id === selectedFolderId && (
                 <span style={{ color: colors.accent, fontSize: '13px', fontWeight: 700, flexShrink: 0 }}>
                   ✓
+                </span>
+              )}
+              {f.id === suggestion?.folderId && f.id !== selectedFolderId && (
+                <span style={{ color: colors.textMuted, fontSize: '11px', flexShrink: 0 }} title="Jev 推荐">
+                  🤖
                 </span>
               )}
             </div>

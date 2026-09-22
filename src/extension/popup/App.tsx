@@ -223,6 +223,7 @@ function AppShell() {
     return (
       <FolderPicker
         initialTitle={initialSaveTitle}
+        pageUrl={saveTabUrl}
         onSave={onSaveToFolder}
         onBack={() => setShowFolderPicker(false)}
       />
