@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { buildFolderTree, filterFolderTree, type FolderTreeNode } from './useFolderTree'
 
 export interface FolderNode {
   id: string
@@ -6,27 +7,19 @@ export interface FolderNode {
   path: string
 }
 
-async function flattenFolders(
-  nodes: chrome.bookmarks.BookmarkTreeNode[],
-  parentPath: string,
-): Promise<FolderNode[]> {
-  const result: FolderNode[] = []
-  for (const node of nodes) {
-    if (!node.url && node.children) {
-      const path = parentPath ? `${parentPath}/${node.title}` : node.title
-      result.push({ id: node.id, title: node.title, path })
-      const children = await flattenFolders(node.children, path)
-      result.push(...children)
-    }
-  }
-  return result
+/** 扁平化目录树，便于按 id / 路径查找（Jev 推荐与备选目录使用） */
+function flattenFolderTree(nodes: FolderTreeNode[]): FolderNode[] {
+  return nodes.flatMap(node => [
+    { id: node.id, title: node.title, path: node.path },
+    ...flattenFolderTree(node.children),
+  ])
 }
 
 /**
- * 加载 Chrome 书签树并按层级展开所有文件夹，支持按名称/路径搜索
+ * 加载 Chrome 书签树并构建目录树，支持按名称/路径搜索
  */
 export function useFolderPicker() {
-  const [allFolders, setAllFolders] = useState<FolderNode[]>([])
+  const [folderTree, setFolderTree] = useState<FolderTreeNode[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFolderId, setSelectedFolderId] = useState<string>('')
@@ -34,30 +27,32 @@ export function useFolderPicker() {
   useEffect(() => {
     setLoading(true)
     chrome.bookmarks.getTree()
-      .then(async ([root]) => {
-        const folders = await flattenFolders(root.children ?? [], '')
-        setAllFolders(folders)
+      .then(([root]) => {
+        const tree = buildFolderTree(root.children ?? [])
+        setFolderTree(tree)
         // 仅在用户/推荐尚未选定目录时使用首个目录兜底，
         // 避免异步加载覆盖 Jev 推荐或用户的手动选择
-        if (folders.length > 0) {
-          setSelectedFolderId(prev => prev || folders[0].id)
+        const firstFolder = flattenFolderTree(tree)[0]
+        if (firstFolder) {
+          setSelectedFolderId(prev => prev || firstFolder.id)
         }
       })
       .catch(() => {
-        setAllFolders([])
+        setFolderTree([])
       })
       .finally(() => {
         setLoading(false)
       })
   }, [])
 
-  const filteredFolders = useMemo(() => {
-    if (!searchQuery.trim()) return allFolders
-    const q = searchQuery.toLowerCase()
-    return allFolders.filter(
-      f => f.path.toLowerCase().includes(q) || f.title.toLowerCase().includes(q),
-    )
-  }, [allFolders, searchQuery])
+  /** 全部目录的扁平视图（含完整路径） */
+  const allFolders = useMemo(() => flattenFolderTree(folderTree), [folderTree])
+
+  /** 按搜索词过滤后的目录树（保留命中目录的祖先链） */
+  const filteredTree = useMemo(
+    () => filterFolderTree(folderTree, searchQuery),
+    [folderTree, searchQuery],
+  )
 
   const selectedFolder = useMemo(
     () => allFolders.find(f => f.id === selectedFolderId),
@@ -67,8 +62,9 @@ export function useFolderPicker() {
   const clearSearch = useCallback(() => setSearchQuery(''), [])
 
   return {
+    folderTree,
+    filteredTree,
     allFolders,
-    filteredFolders,
     loading,
     searchQuery,
     setSearchQuery,

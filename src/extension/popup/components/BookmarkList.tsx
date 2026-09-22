@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { isFolderNode } from '../hooks/useBookmarkNavigation'
 import { useBookmarkVisitCounts } from '../hooks/useBookmarkVisitCounts'
+import { buildFolderTree, useFolderTree } from '../hooks/useFolderTree'
 import { useTheme } from '../theme'
+import { FolderTree } from './FolderTree'
 import { OTHER_BOOKMARKS_ID, MOBILE_BOOKMARKS_ID, ROOT_FOLDER_META } from '../constants'
 
 interface BookmarkListProps {
   currentItems: chrome.bookmarks.BookmarkTreeNode[]
   isHomeView: boolean
-  onEnterFolder: (id: string, title: string) => void
+  onEnterFolder: (id: string, title: string, ancestors?: Array<{ id: string; title: string }>) => void
   onOpenBookmark: (url: string) => void
 }
 
@@ -88,7 +90,12 @@ function BookmarkRow({ title, url, visitCount, onClick }: { title: string; url: 
 
 export function BookmarkList({ currentItems, isHomeView, onEnterFolder, onOpenBookmark }: BookmarkListProps) {
   const { styles, colors } = useTheme()
-  const folders = currentItems.filter(n => isFolderNode(n))
+  const folderTree = useMemo(
+    () => buildFolderTree(currentItems.filter(n => isFolderNode(n))),
+    [currentItems],
+  )
+  // 弹窗空间有限，目录树默认全部折叠，按需展开
+  const { expandedIds, toggleExpand } = useFolderTree(folderTree, { defaultExpanded: false })
   const bookmarks = currentItems.filter(n => !isFolderNode(n))
   const bookmarkUrls = bookmarks.map(b => b.url!).filter(Boolean)
   const visitCounts = useBookmarkVisitCounts(bookmarkUrls)
@@ -99,20 +106,18 @@ export function BookmarkList({ currentItems, isHomeView, onEnterFolder, onOpenBo
 
   return (
     <>
-      {folders.length > 0 && (
+      {folderTree.length > 0 && (
         <>
           <div style={styles.sectionLabel}>
             <span style={{ color: colors.blue }}>◆</span> 目录
           </div>
-          <div style={styles.tagContainer}>
-            {folders.map(f => (
-              <FolderTag
-                key={f.id}
-                title={f.title}
-                onClick={() => onEnterFolder(f.id, f.title)}
-              />
-            ))}
-          </div>
+          <FolderTree
+            nodes={folderTree}
+            expandedIds={expandedIds}
+            onToggleExpand={toggleExpand}
+            onSelect={node => onEnterFolder(node.id, node.title, node.ancestors)}
+            testId="bookmark-folder-tree"
+          />
         </>
       )}
 

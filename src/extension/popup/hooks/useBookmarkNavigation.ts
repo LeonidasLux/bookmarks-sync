@@ -47,14 +47,23 @@ export function useBookmarkNavigation() {
   // 挂载时自动加载初始数据
   useEffect(() => { initNavigation() }, [initNavigation])
 
-  const enterFolder = useCallback(async (id: string, title: string) => {
+  /**
+   * 进入目录。
+   * ancestors 为树形视图中从当前层级到目标目录父级的链路，
+   * 用于在直接点击深层目录时补全面包屑。
+   */
+  const enterFolder = useCallback(async (
+    id: string,
+    title: string,
+    ancestors: Array<{ id: string; title: string }> = [],
+  ) => {
     const children = await getFolderChildren(id)
 
     const prev = currentFolderRef.current
     const isSiblingRoot = (id === OTHER_BOOKMARKS_ID || id === MOBILE_BOOKMARKS_ID)
       && prev.id === BOOKMARKS_BAR_ID
     if (!isSiblingRoot) {
-      setBreadcrumbs(b => [...b, prev])
+      setBreadcrumbs(b => [...b, prev, ...ancestors])
     }
     setCurrentFolder({ id, title })
     setCurrentItems(children)

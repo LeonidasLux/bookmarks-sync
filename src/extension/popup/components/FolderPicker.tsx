@@ -1,7 +1,9 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useFolderPicker } from '../hooks/useFolderPicker'
 import { useFolderSuggestion } from '../hooks/useFolderSuggestion'
+import { collectFolderIds, useFolderTree } from '../hooks/useFolderTree'
 import { useTheme } from '../theme'
+import { FolderTree } from './FolderTree'
 
 interface FolderPickerProps {
   initialTitle: string
@@ -15,13 +17,22 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
   const { styles, colors, fonts } = useTheme()
   const {
     allFolders,
-    filteredFolders,
+    folderTree,
+    filteredTree,
     loading,
     searchQuery,
     setSearchQuery,
     selectedFolderId,
     setSelectedFolderId,
   } = useFolderPicker()
+  // 目录树默认全部展开，便于直接看到嵌套目录
+  const { expandedIds, allExpanded, toggleExpand, expandAll, collapseAll } = useFolderTree(folderTree)
+  const searching = searchQuery.trim().length > 0
+  /** 搜索时强制展开命中目录的祖先链，保证搜索结果可见 */
+  const visibleExpandedIds = useMemo(
+    () => (searching ? new Set(collectFolderIds(filteredTree)) : expandedIds),
+    [searching, filteredTree, expandedIds],
+  )
   // 页面标题固定使用打开时的标题，避免编辑书签标题时反复触发推荐
   const { state: suggestionState, suggestion, error: suggestionError } = useFolderSuggestion(initialTitle, pageUrl)
 
@@ -272,6 +283,9 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
 
       {/* 手动选择目录 */}
       <div style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
         fontSize: '10px',
         fontWeight: 600,
         color: colors.textDim,
@@ -280,7 +294,22 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
         marginBottom: '4px',
         fontFamily: fonts.mono,
       }}>
-        手动选择
+        <span>手动选择</span>
+        {!searching && folderTree.length > 0 && (
+          <span
+            data-testid="folder-tree-expand-toggle"
+            onClick={allExpanded ? collapseAll : expandAll}
+            style={{
+              cursor: 'pointer',
+              color: colors.accent,
+              fontWeight: 400,
+              textTransform: 'none' as const,
+              letterSpacing: 0,
+            }}
+          >
+            {allExpanded ? '折叠全部' : '展开全部'}
+          </span>
+        )}
       </div>
       <input
         ref={searchInputRef}
@@ -326,7 +355,7 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
           }}>
             <span style={{ color: colors.accent }}>⟳</span> 加载中...
           </div>
-        ) : filteredFolders.length === 0 ? (
+        ) : filteredTree.length === 0 ? (
           <div style={{
             textAlign: 'center' as const,
             color: colors.textDim,
@@ -337,67 +366,34 @@ export function FolderPicker({ initialTitle, pageUrl = '', onSave, onBack }: Fol
             ∅ 未找到匹配的目录
           </div>
         ) : (
-          filteredFolders.map(f => (
-            <div
-              key={f.id}
-              id={`folder-item-${f.id}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 10px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                transition: 'background 0.1s',
-                ...(f.id === selectedFolderId ? {
-                  background: `${colors.accent}12`,
-                  border: `1px solid ${colors.accent}30`,
-                } : {}),
-                ...(hoverItem === f.id && f.id !== selectedFolderId ? { background: `${colors.accent}08` } : {}),
-              }}
-              onClick={() => selectFolder(f.id)}
-              onMouseEnter={() => setHoverItem(f.id)}
-              onMouseLeave={() => setHoverItem(null)}
-            >
-              <span style={{ fontSize: '14px', flexShrink: 0 }}>📁</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: colors.text,
-                  fontFamily: fonts.mono,
-                  display: 'block',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap' as const,
-                }}>
-                  {f.title}
-                </span>
-                <span style={{
-                  fontSize: '10px',
-                  color: colors.textDim,
-                  fontFamily: fonts.mono,
-                  display: 'block',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap' as const,
-                  marginTop: '1px',
-                }}>
-                  {f.path}
-                </span>
-              </div>
-              {f.id === selectedFolderId && (
-                <span style={{ color: colors.accent, fontSize: '13px', fontWeight: 700, flexShrink: 0 }}>
-                  ✓
-                </span>
+          <div style={{ padding: '4px' }}>
+            <FolderTree
+              nodes={filteredTree}
+              expandedIds={visibleExpandedIds}
+              onToggleExpand={toggleExpand}
+              onSelect={node => selectFolder(node.id)}
+              selectedId={selectedFolderId}
+              showPath
+              itemIdPrefix="folder-item-"
+              renderMeta={node => (
+                <>
+                  {node.id === suggestion?.folderId && node.id !== selectedFolderId && (
+                    <span
+                      style={{ color: colors.textMuted, fontSize: '11px', flexShrink: 0 }}
+                      title="Jev 推荐"
+                    >
+                      🤖
+                    </span>
+                  )}
+                  {node.id === selectedFolderId && (
+                    <span style={{ color: colors.accent, fontSize: '13px', fontWeight: 700, flexShrink: 0 }}>
+                      ✓
+                    </span>
+                  )}
+                </>
               )}
-              {f.id === suggestion?.folderId && f.id !== selectedFolderId && (
-                <span style={{ color: colors.textMuted, fontSize: '11px', flexShrink: 0 }} title="Jev 推荐">
-                  🤖
-                </span>
-              )}
-            </div>
-          ))
+            />
+          </div>
         )}
       </div>
 

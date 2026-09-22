@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { renderWithTheme } from '../test-utils'
 import userEvent from '@testing-library/user-event'
 import { FolderPicker } from '../../../extension/popup/components/FolderPicker'
@@ -13,7 +13,13 @@ const mockTree: chrome.bookmarks.BookmarkTreeNode[] = [
         id: '1',
         title: '书签栏',
         children: [
-          { id: '11', title: '技术', children: [] },
+          {
+            id: '11',
+            title: '技术',
+            children: [
+              { id: '111', title: '前端', children: [] },
+            ],
+          },
           { id: '12', title: '工具', children: [] },
         ],
       },
@@ -40,6 +46,14 @@ function getFolderItem(title: string): HTMLElement | null {
   return allTitleSpans.find(
     el => el.tagName === 'SPAN' && el.style.fontWeight === '500',
   ) ?? null
+}
+
+/** 获取目录树中指定标题所在的行 */
+function getTreeRow(title: string): HTMLElement {
+  const item = getFolderItem(title)
+  const row = item?.closest('[data-testid="folder-tree-row"]')
+  if (!row) throw new Error(`未找到目录行：${title}`)
+  return row as HTMLElement
 }
 
 describe('FolderPicker', () => {
@@ -114,6 +128,91 @@ describe('FolderPicker', () => {
       expect(getFolderItem('工具')).toBeNull()
     })
     expect(getFolderItem('其他书签')).toBeNull()
+  })
+
+  it('应树形展示嵌套目录，箭头可折叠 / 展开子目录', async () => {
+    renderWithTheme(<FolderPicker initialTitle={INITIAL_TITLE} onSave={vi.fn()} onBack={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(getFolderItem('书签栏')).toBeTruthy()
+    })
+
+    // 默认展开：父目录下的子目录直接可见，且层级更深
+    expect(getFolderItem('前端')).toBeTruthy()
+    expect(parseInt(getTreeRow('前端').style.paddingLeft, 10))
+      .toBeGreaterThan(parseInt(getTreeRow('技术').style.paddingLeft, 10))
+
+    // 点击父目录箭头折叠，子目录隐藏
+    await userEvent.click(within(getTreeRow('技术')).getByTestId('folder-tree-toggle'))
+    await waitFor(() => {
+      expect(getFolderItem('前端')).toBeNull()
+    })
+    // 父目录自身仍然可见
+    expect(getFolderItem('技术')).toBeTruthy()
+
+    // 再次点击恢复展开
+    await userEvent.click(within(getTreeRow('技术')).getByTestId('folder-tree-toggle'))
+    await waitFor(() => {
+      expect(getFolderItem('前端')).toBeTruthy()
+    })
+  })
+
+  it('点击箭头不应改变已选目录', async () => {
+    const onSave = vi.fn()
+    renderWithTheme(<FolderPicker initialTitle={INITIAL_TITLE} onSave={onSave} onBack={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(getFolderItem('技术')).toBeTruthy()
+    })
+
+    // 默认选中第一个目录（书签栏），折叠它之后保存仍写入书签栏
+    await userEvent.click(within(getTreeRow('书签栏')).getByTestId('folder-tree-toggle'))
+    await userEvent.click(screen.getByText('保存'))
+
+    expect(onSave).toHaveBeenCalledWith('1', INITIAL_TITLE)
+  })
+
+  it('展开全部 / 折叠全部 可切换整棵目录树', async () => {
+    renderWithTheme(<FolderPicker initialTitle={INITIAL_TITLE} onSave={vi.fn()} onBack={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(getFolderItem('前端')).toBeTruthy()
+    })
+
+    await userEvent.click(screen.getByTestId('folder-tree-expand-toggle'))
+    await waitFor(() => {
+      expect(getFolderItem('前端')).toBeNull()
+      expect(getFolderItem('技术')).toBeNull()
+    })
+    // 按钮文案切换为「展开全部」
+    expect(screen.getByTestId('folder-tree-expand-toggle')).toHaveTextContent('展开全部')
+
+    await userEvent.click(screen.getByTestId('folder-tree-expand-toggle'))
+    await waitFor(() => {
+      expect(getFolderItem('前端')).toBeTruthy()
+    })
+  })
+
+  it('搜索命中深层目录时保留祖先链，可直接选中保存', async () => {
+    const onSave = vi.fn()
+    renderWithTheme(<FolderPicker initialTitle={INITIAL_TITLE} onSave={onSave} onBack={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(getFolderItem('书签栏')).toBeTruthy()
+    })
+
+    await userEvent.type(screen.getByPlaceholderText('搜索目录...'), '前端')
+
+    // 祖先链保留：书签栏 / 技术 / 前端
+    expect(getFolderItem('书签栏')).toBeTruthy()
+    expect(getFolderItem('技术')).toBeTruthy()
+    expect(getFolderItem('前端')).toBeTruthy()
+    expect(getFolderItem('工具')).toBeNull()
+
+    await userEvent.click(getFolderItem('前端')!)
+    await userEvent.click(screen.getByText('保存'))
+
+    expect(onSave).toHaveBeenCalledWith('111', INITIAL_TITLE)
   })
 
   it('无匹配搜索应显示空状态', async () => {

@@ -2,6 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useFolderPicker } from '../../../extension/popup/hooks/useFolderPicker'
 import type { FolderNode } from '../../../extension/popup/hooks/useFolderPicker'
+import type { FolderTreeNode } from '../../../extension/popup/hooks/useFolderTree'
+
+/** 深度优先展开目录树，便于断言 */
+function flatten(nodes: FolderTreeNode[]): FolderTreeNode[] {
+  return nodes.flatMap(node => [node, ...flatten(node.children)])
+}
 
 const mockTree: chrome.bookmarks.BookmarkTreeNode[] = [
   {
@@ -91,10 +97,32 @@ describe('useFolderPicker', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     expect(result.current.searchQuery).toBe('')
-    expect(result.current.filteredFolders).toEqual(result.current.allFolders)
+    expect(result.current.filteredTree).toEqual(result.current.folderTree)
   })
 
-  it('设置 searchQuery 后应正确过滤文件夹', async () => {
+  it('应以树形结构组织目录（父子关系与缩进层级）', async () => {
+    const { result } = renderHook(() => useFolderPicker())
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    // 顶层目录为书签栏 / 其他书签 / 移动设备书签
+    expect(result.current.folderTree.map(n => n.id)).toEqual(['1', '2', '3'])
+
+    const bookmarkBar = result.current.folderTree[0]
+    expect(bookmarkBar.children.map(n => n.id)).toEqual(['11', '12'])
+
+    const tech = bookmarkBar.children[0]
+    expect(tech.children.map(n => n.id)).toEqual(['111', '112'])
+
+    // 深层目录携带祖先链，便于拼接面包屑
+    expect(flatten(result.current.folderTree).find(n => n.id === '111')?.ancestors)
+      .toEqual([
+        { id: '1', title: '书签栏' },
+        { id: '11', title: '技术' },
+      ])
+  })
+
+  it('设置 searchQuery 后应过滤目录树并保留祖先链', async () => {
     const { result } = renderHook(() => useFolderPicker())
 
     await waitFor(() => expect(result.current.loading).toBe(false))
@@ -103,11 +131,9 @@ describe('useFolderPicker', () => {
       result.current.setSearchQuery('技术')
     })
 
-    expect(result.current.filteredFolders.length).toBeGreaterThan(0)
-    result.current.filteredFolders.forEach((f: FolderNode) => {
-      const matches = f.title.includes('技术') || f.path.includes('技术')
-      expect(matches).toBe(true)
-    })
+    // 书签栏作为命中的「技术」的祖先被保留，工具与其他书签被剪掉
+    expect(result.current.filteredTree.map(n => n.id)).toEqual(['1'])
+    expect(result.current.filteredTree[0].children.map(n => n.id)).toEqual(['11'])
   })
 
   it('搜索"前端"应匹配文件夹名称和路径', async () => {
@@ -119,8 +145,8 @@ describe('useFolderPicker', () => {
       result.current.setSearchQuery('前端')
     })
 
-    const matched = result.current.filteredFolders.map((f: FolderNode) => f.id)
-    expect(matched).toContain('111')
+    const matched = flatten(result.current.filteredTree).map(f => f.id)
+    expect(matched).toEqual(['1', '11', '111'])
   })
 
   it('无匹配搜索应返回空列表', async () => {
@@ -132,7 +158,7 @@ describe('useFolderPicker', () => {
       result.current.setSearchQuery('不存在的文件夹名称_xyz')
     })
 
-    expect(result.current.filteredFolders).toHaveLength(0)
+    expect(result.current.filteredTree).toHaveLength(0)
   })
 
   it('clearSearch 应重置搜索', async () => {
@@ -145,7 +171,7 @@ describe('useFolderPicker', () => {
 
     act(() => result.current.clearSearch())
     expect(result.current.searchQuery).toBe('')
-    expect(result.current.filteredFolders).toEqual(result.current.allFolders)
+    expect(result.current.filteredTree).toEqual(result.current.folderTree)
   })
 
   it('应正确设置选中文件夹', async () => {
@@ -167,6 +193,7 @@ describe('useFolderPicker', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.allFolders).toEqual([])
-    expect(result.current.filteredFolders).toEqual([])
+    expect(result.current.folderTree).toEqual([])
+    expect(result.current.filteredTree).toEqual([])
   })
 })

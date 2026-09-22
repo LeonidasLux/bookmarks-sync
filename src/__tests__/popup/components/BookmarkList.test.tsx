@@ -1,7 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { renderWithTheme } from '../test-utils'
 import { BookmarkList } from '../../../extension/popup/components/BookmarkList'
+
+/** 取目录树中某个标题所在的行 */
+function getTreeRow(title: string): HTMLElement {
+  const row = screen.getByText(title).closest('[data-testid="folder-tree-row"]')
+  if (!row) throw new Error(`未找到目录行：${title}`)
+  return row as HTMLElement
+}
 
 describe('BookmarkList', () => {
   const defaultProps = {
@@ -113,7 +120,119 @@ describe('BookmarkList', () => {
       />,
     )
     fireEvent.click(screen.getByText('我的目录'))
-    expect(onEnterFolder).toHaveBeenCalledWith('5', '我的目录')
+    expect(onEnterFolder).toHaveBeenCalledWith('5', '我的目录', [])
+  })
+
+  it('目录以树形展示且默认全部折叠', () => {
+    const items: chrome.bookmarks.BookmarkTreeNode[] = [
+      {
+        id: '5',
+        title: '我的目录',
+        children: [
+          {
+            id: '6',
+            title: '子目录',
+            children: [{ id: '7', title: '孙目录', children: [] }],
+          },
+        ],
+      },
+      { id: '8', title: '空目录', children: [] },
+    ]
+    renderWithTheme(<BookmarkList {...defaultProps} currentItems={items} />)
+
+    expect(screen.getByTestId('bookmark-folder-tree')).toBeInTheDocument()
+    // 默认折叠：只展示当前层的目录
+    expect(screen.getByText('我的目录')).toBeInTheDocument()
+    expect(screen.getByText('空目录')).toBeInTheDocument()
+    expect(screen.queryByText('子目录')).not.toBeInTheDocument()
+    expect(screen.queryByText('孙目录')).not.toBeInTheDocument()
+
+    // 有子目录的节点显示折叠箭头，叶子节点没有
+    expect(within(getTreeRow('我的目录')).getByTestId('folder-tree-toggle')).toHaveTextContent('▸')
+    expect(within(getTreeRow('空目录')).getByTestId('folder-tree-toggle')).toHaveTextContent('')
+  })
+
+  it('点击箭头逐级展开子目录且不进入目录', () => {
+    const onEnterFolder = vi.fn()
+    const items: chrome.bookmarks.BookmarkTreeNode[] = [
+      {
+        id: '5',
+        title: '我的目录',
+        children: [
+          {
+            id: '6',
+            title: '子目录',
+            children: [{ id: '7', title: '孙目录', children: [] }],
+          },
+        ],
+      },
+    ]
+    renderWithTheme(
+      <BookmarkList
+        {...defaultProps}
+        currentItems={items}
+        onEnterFolder={onEnterFolder}
+      />,
+    )
+
+    expect(screen.queryByText('子目录')).not.toBeInTheDocument()
+
+    // 展开第一级
+    fireEvent.click(within(getTreeRow('我的目录')).getByTestId('folder-tree-toggle'))
+
+    expect(screen.getByText('子目录')).toBeInTheDocument()
+    expect(screen.queryByText('孙目录')).not.toBeInTheDocument()
+    expect(onEnterFolder).not.toHaveBeenCalled()
+
+    // 层级越深缩进越大
+    const parentIndent = parseInt(getTreeRow('我的目录').style.paddingLeft, 10)
+    const childIndent = parseInt(getTreeRow('子目录').style.paddingLeft, 10)
+    expect(childIndent).toBeGreaterThan(parentIndent)
+
+    // 再展开第二级
+    fireEvent.click(within(getTreeRow('子目录')).getByTestId('folder-tree-toggle'))
+
+    const grandChildIndent = parseInt(getTreeRow('孙目录').style.paddingLeft, 10)
+    expect(grandChildIndent).toBeGreaterThan(childIndent)
+    expect(onEnterFolder).not.toHaveBeenCalled()
+
+    // 再次点击折叠回去
+    fireEvent.click(within(getTreeRow('我的目录')).getByTestId('folder-tree-toggle'))
+    expect(screen.queryByText('子目录')).not.toBeInTheDocument()
+  })
+
+  it('点击嵌套子目录进入目录并携带祖先链', () => {
+    const onEnterFolder = vi.fn()
+    const items: chrome.bookmarks.BookmarkTreeNode[] = [
+      {
+        id: '5',
+        title: '我的目录',
+        children: [
+          {
+            id: '6',
+            title: '子目录',
+            children: [{ id: '7', title: '孙目录', children: [] }],
+          },
+        ],
+      },
+    ]
+    renderWithTheme(
+      <BookmarkList
+        {...defaultProps}
+        currentItems={items}
+        onEnterFolder={onEnterFolder}
+      />,
+    )
+
+    // 默认折叠，需要先展开到目标目录所在层级
+    fireEvent.click(within(getTreeRow('我的目录')).getByTestId('folder-tree-toggle'))
+    fireEvent.click(within(getTreeRow('子目录')).getByTestId('folder-tree-toggle'))
+
+    fireEvent.click(screen.getByText('孙目录'))
+    expect(onEnterFolder).toHaveBeenCalledWith('7', '孙目录', [
+      { id: '5', title: '我的目录' },
+      { id: '6', title: '子目录' },
+    ])
   })
 
   it('isHomeView 时有内容时底部显示根级目录', () => {
