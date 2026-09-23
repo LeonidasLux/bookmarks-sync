@@ -249,7 +249,11 @@ bookmarks-sync/
 │       ├── options/hooks/             #   useConfigForm + useCommands + useRemoteFiles + useTheme
 │       ├── options/components/        #   FormControls + SettingsColumns + GithubSection
 │       │                               #   + SyncFilesSection + SettingsCards
-│       └── options/                   #   App 装配（标题栏 / 双列 / 保存）
+│       ├── options/                   #   App 装配（标题栏 / 双列 / 保存）
+│       └── scripts/                   #   zip 打包 / CRX3 签名 / 命令行入口
+├── scripts/                           # 打包脚本
+│   ├── pack-extension.mjs             #   命令行入口：收集 dist → zip + crx
+│   └── lib/                           #   zip.mjs（ZIP 写入）+ crx.mjs（CRX3 签名）
 ├── vite.config.ts                     # Vite + CRX 打包配置
 ├── vitest.config.ts                   # Vitest 测试配置
 ├── tsconfig.json
@@ -332,6 +336,31 @@ pnpm build
 ```
 
 编译 TypeScript 并输出到 `dist/` 目录，产物为可直接加载的扩展包。
+
+### 打包分发（zip / crx）
+
+```bash
+pnpm package:ext            # 等价于 pnpm build && node scripts/pack-extension.mjs
+```
+
+会把 `dist/` 打包到 `release/` 目录：
+
+- `bookmarks-sync-<版本>.zip`：Chrome Web Store 上传与手动分发的压缩包
+- `bookmarks-sync-<版本>.crx`：CRX3 签名包，可直接拖入 `chrome://extensions` 安装（需开启开发者模式）
+
+脚本参数（也可直接执行 `node scripts/pack-extension.mjs`）：
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--dist <目录>` | 构建产物目录 | `dist` |
+| `--out <目录>` | 产物输出目录 | `release` |
+| `--key <文件>` | CRX 签名私钥（PEM） | `.keys/<包名>.pem`，不存在时自动生成 |
+| `--name <名称>` | 产物文件名前缀 | `package.json` 的 `name` |
+| `--only <zip\|crx>` | 只打包其中一种 | 两者都打包 |
+
+> 🔑 **签名私钥**：CRX 的扩展 ID 由私钥决定，`.keys/` 已加入 `.gitignore`，请自行备份保存。若扩展已上架、需要沿用原有扩展 ID，请用 `--key` 指定你现有的 `.pem`（例如 Chrome 打包扩展时生成的密钥）。
+>
+> ℹ️ 产物版本号取自 `manifest.version`；当它与 `package.json` 的 `version` 不一致时会打印提示（当前 manifest 版本定义在 `vite.config.ts`）。
 
 ### 测试
 

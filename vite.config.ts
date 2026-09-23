@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
         manifest: {
           manifest_version: 3,
           name: '书签远程同步',
-          version: '1.3.1',
+          version: '1.4.0',
           description: 'Browser bookmarks sync with GitHub',
           permissions: ['storage', 'bookmarks', 'activeTab', 'favicon', 'history', 'alarms'],
           host_permissions: ['https://api.github.com/*', 'https://api.typesafe.ai/*'],
